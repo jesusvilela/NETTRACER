@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Netracer V2 Cognition Trace</title>
+  <style>
+    :root {
+      --bg: #05070a;
+      --panel: rgba(9, 14, 18, 0.84);
+      --line: rgba(141, 220, 255, 0.18);
+      --ink: #edf8ff;
+      --muted: #8fa6b5;
+      --gold: #f2cd72;
+      --cyan: #73dcff;
+      --green: #8fffd0;
+      --red: #ff9e93;
+      --violet: #bfc1ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--ink);
+      font-family: "Bahnschrift", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 20% 12%, rgba(115, 220, 255, 0.16), transparent 28%),
+        radial-gradient(circle at 78% 82%, rgba(242, 205, 114, 0.1), transparent 28%),
+        linear-gradient(180deg, #05070a, #10151a 56%, #030407);
+    }
+    .topbar {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) repeat(7, auto);
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(5, 8, 12, 0.82);
+      backdrop-filter: blur(16px);
+    }
+    .brand {
+      color: var(--gold);
+      font-size: 0.8rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .chip {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 11px;
+      background: rgba(9, 14, 18, 0.72);
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .chip strong { color: var(--ink); font-weight: 700; }
+    .shell {
+      position: fixed;
+      inset: 56px 0 0 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 12px;
+      padding: 12px;
+    }
+    .stage, .side, .trace {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(9, 14, 18, 0.9), rgba(4, 7, 10, 0.92));
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+      overflow: hidden;
+    }
+    .stage { position: relative; border-radius: 20px; }
+    canvas { width: 100%; height: 100%; display: block; }
+    .side {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) 230px;
+      gap: 0;
+      border-radius: 20px;
+      min-height: 0;
+    }
+    .section {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      min-height: 0;
+      overflow: auto;
+    }
+    .section:last-child { border-bottom: 0; }
+    .title {
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .dominant {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .dominant strong {
+      color: var(--gold);
+      font-size: 2.8rem;
+      line-height: 1;
+      letter-spacing: 0.04em;
+    }
+    .dominant span {
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-align: right;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .meter {
+      margin: 10px 0;
+    }
+    .meter-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--cyan), var(--gold));
+      transition: width 260ms ease;
+    }
+    .level {
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr) 58px;
+      gap: 10px;
+      align-items: center;
+      margin: 9px 0;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+    .level b { color: var(--ink); font-size: 0.88rem; }
+    .trace-list {
+      font-family: Consolas, "Cascadia Mono", monospace;
+      color: #cbe9fb;
+      font-size: 0.68rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .overlay {
+      position: absolute;
+      inset: 16px;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+    }
+    .legend {
+      max-width: 420px;
+      border: 1px solid rgba(141, 220, 255, 0.15);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(4, 7, 10, 0.62);
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.45;
+      backdrop-filter: blur(10px);
+    }
+    .legend strong { color: var(--ink); }
+    @media (max-width: 900px) {
+      body { overflow: auto; }
+      .topbar, .shell { position: static; }
+      .topbar { grid-template-columns: 1fr 1fr; }
+      .shell { grid-template-columns: 1fr; height: auto; }
+      .stage { min-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">NETTRACER V2 COGNITION</div>
+    <div class="chip"><span>bridge</span><strong id="status">loading</strong></div>
+    <div class="chip"><span>records</span><strong id="records">0</strong></div>
+    <div class="chip"><span>energy</span><strong id="energy">0</strong></div>
+    <div class="chip"><span>carrier</span><strong id="carrier">-</strong></div>
+    <div class="chip"><span>move</span><strong id="move">-</strong></div>
+    <div class="chip"><span>boot</span><strong id="boot">R40</strong></div>
+    <div class="chip"><span>swirl</span><strong id="swirl">counter</strong></div>
+    <div class="chip"><span>phi+</span><strong id="coherence">0</strong></div>
+  </header>
+
+  <main class="shell">
+    <section class="stage">
+      <canvas id="field"></canvas>
+      <div class="overlay">
+        <div class="legend"><strong>R40 motion view:</strong> Lorentz-boosted moving frame, Berry quarter-turn, Fano braid memory, 360-direction mesh, counter-swirl fields, carrier rings, bridge particles, and dominance trail.</div>
+        <div class="legend"><strong id="question">Which level is now the dominant carrier?</strong><br><span id="bridge-end">stratified ascent bridge end</span></div>
+      </div>
+    </section>
+    <aside class="side">
+      <section class="section">
+        <div class="title">Dominance Trace</div>
+        <div class="dominant"><strong id="dominant">-</strong><span id="dominant-role">waiting for absorb</span></div>
+        <div class="meter"><div class="meter-row"><span>Perspective gain</span><span id="gain-val">0</span></div><div class="bar"><div class="fill" id="gain"></div></div></div>
+        <div class="meter"><div class="meter-row"><span>Active remainder</span><span id="rem-val">0</span></div><div class="bar"><div class="fill" id="rem"></div></div></div>
+        <div class="meter"><div class="meter-row"><span>Projection violence</span><span id="violence-val">0</span></div><div class="bar"><div class="fill" id="violence"></div></div></div>
+      </section>
+      <section class="section">
+        <div class="title">Algebraic Carriers</div>
+        <div id="levels"></div>
+      </section>
+      <section class="section">
+        <div class="title">Recent Bridge Records</div>
+        <div class="trace-list" id="trace"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("field");
+    const ctx = canvas.getContext("2d");
+    let state = null;
+    let t = 0;
+    const levelColors = {
+      R: "#edf8ff",
+      C: "#73dcff",
+      H: "#8fffd0",
+      O: "#f2cd72",
+      S: "#ff9e93",
+      CD32: "#bfc1ff",
+      A_n: "#ffffff"
+    };
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * scale));
+      canvas.height = Math.max(1, Math.floor(rect.height * scale));
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    }
+
+    async function loadStatus() {
+      try {
+        const response = await fetch("/api/cognition/status", { cache: "no-store" });
+        state = await response.json();
+        renderDom(state);
+      } catch (error) {
+        document.getElementById("status").textContent = "offline";
+      }
+    }
+
+    function renderDom(data) {
+      const phi = data.phi_cog_plus || {};
+      const trace = data.dominance_trace || {};
+      document.getElementById("status").textContent = data.status || "unknown";
+      document.getElementById("records").textContent = data.source?.records ?? 0;
+      document.getElementById("energy").textContent = fmt(data.invariant?.total_cognitive_energy);
+      document.getElementById("carrier").textContent = trace.current || "-";
+      document.getElementById("move").textContent = trace.classification || "-";
+      document.getElementById("boot").textContent = data.boot?.id || "R40";
+      document.getElementById("swirl").textContent = data.boot?.swirl ? "Fano" : "counter";
+      document.getElementById("coherence").textContent = fmt(phi.coherence);
+      document.getElementById("question").textContent = trace.question || "Which level is now the dominant carrier?";
+      document.getElementById("bridge-end").textContent = data.boot?.evolution_chain || data.bridge_end?.name || "stratified ascent bridge end";
+      document.getElementById("dominant").textContent = trace.current || "-";
+      const dominantLevel = (data.levels || []).find((item) => item.level_id === trace.current);
+      document.getElementById("dominant-role").textContent = dominantLevel?.role || "waiting for absorb";
+      setMeter("gain", phi.perspective_gain || 0);
+      setMeter("rem", phi.active_remainder || 0);
+      setMeter("violence", phi.projection_violence || 0);
+      document.getElementById("levels").innerHTML = (data.levels || []).map((level) => `
+        <div class="level">
+          <b style="color:${levelColors[level.level_id] || "#edf8ff"}">${level.level_id}</b>
+          <div>
+            <div>${level.algebra}</div>
+            <div class="bar"><div class="fill" style="width:${pct(level.carrier_strength)}%; background:${levelColors[level.level_id] || "#73dcff"}"></div></div>
+          </div>
+          <span>${fmt(level.carrier_strength)}</span>
+        </div>
+      `).join("");
+      document.getElementById("trace").textContent = (data.recent || []).slice().reverse().map((item) =>
+        `${new Date(item.timestamp_ms || Date.now()).toLocaleTimeString()}  ${item.dominant_carrier}  E=${fmt(item.total_cognitive_energy)}  G=${fmt(item.perspective_gain)}  R=${fmt(item.active_remainder)}  V=${fmt(item.projection_violence)}`
+      ).join("\n") || "waiting for /ju/absorb";
+    }
+
+    function setMeter(id, value) {
+      const clean = Number(value) || 0;
+      document.getElementById(id).style.width = `${pct(clean)}%`;
+      document.getElementById(`${id}-val`).textContent = fmt(clean);
+    }
+
+    function draw() {
+      t += 0.01;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      ctx.clearRect(0, 0, width, height);
+      const cx = width / 2;
+      const cy = height / 2;
+      const radius = Math.min(width, height) * 0.36;
+      const levels = state?.levels || [];
+      const dominant = state?.dominance_trace?.current;
+      const phi = state?.phi_cog_plus || {};
+      const gain = Number(phi.perspective_gain) || 0.4;
+      const remainder = Number(phi.active_remainder) || 0.25;
+      const violence = Number(phi.projection_violence) || 0.1;
+
+      drawLightCone(cx, cy, radius);
+      drawCounterSwirl(cx, cy, radius, gain, remainder, violence);
+      drawFanoBraid(cx, cy, radius, gain);
+      drawMesh(cx, cy, radius, gain);
+      levels.forEach((level, index) => drawCarrier(level, index, levels.length, cx, cy, radius, dominant));
+      drawOpposingBridgeParticles(cx, cy, radius, gain, remainder);
+      drawTrace(cx, cy, radius);
+      drawDominanceTrail(cx, cy, radius);
+      requestAnimationFrame(draw);
+    }
+
+    function drawLightCone(cx, cy, radius) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI / 4 + Math.sin(t * 0.5) * 0.05);
+      ctx.strokeStyle = "rgba(237,248,255,0.13)";
+      ctx.lineWidth = 1;
+      for (const sign of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(-radius * 0.95, sign * -radius * 0.95);
+        ctx.lineTo(radius * 0.95, sign * radius * 0.95);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawCounterSwirl(cx, cy, radius, gain, remainder, violence) {
+      const arms = 9;
+      for (let arm = 0; arm < arms; arm += 1) {
+        ctx.beginPath();
+        for (let i = 0; i < 150; i += 1) {
+          const p = i / 149;
+          const angle = arm * Math.PI * 2 / arms + p * Math.PI * 5 + t * (arm % 2 ? -0.9 : 0.7);
+          const r = radius * p * (0.28 + gain * 0.16 + remainder * 0.12);
+          const x = cx + Math.cos(angle) * r;
+          const y = cy + Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = arm % 2 ? `rgba(115,220,255,${0.16 + remainder * 0.14})` : `rgba(242,205,114,${0.13 + gain * 0.12})`;
+        ctx.lineWidth = 1.2 + violence * 0.8;
+        ctx.stroke();
+      }
+    }
+
+    function drawMesh(cx, cy, radius, gain) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(t * 0.12 + Math.PI / 2);
+      for (let theta = 0; theta < 360; theta += 6) {
+        const angle = theta * Math.PI / 180;
+        const long = theta % 30 === 0;
+        const r0 = radius * (long ? 0.1 : 0.18);
+        const r1 = radius * (0.84 + 0.08 * Math.sin(t * 2 + theta));
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * r0, Math.sin(angle) * r0);
+        ctx.lineTo(Math.cos(angle) * r1, Math.sin(angle) * r1);
+        ctx.strokeStyle = long ? "rgba(237,248,255,0.18)" : `rgba(141,220,255,${0.035 + gain * 0.025})`;
+        ctx.lineWidth = long ? 1 : 0.6;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawFanoBraid(cx, cy, radius, gain) {
+      const points = [];
+      const r = radius * 0.22;
+      for (let i = 0; i < 7; i += 1) {
+        const angle = i * Math.PI * 2 / 7 + t * 0.42;
+        points.push([cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]);
+      }
+      const edges = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],[0,3],[1,4],[2,5],[3,6]];
+      edges.forEach(([a, b], index) => {
+        const pa = points[a];
+        const pb = points[b];
+        const midx = (pa[0] + pb[0]) / 2 + Math.sin(t * 2 + index) * 10;
+        const midy = (pa[1] + pb[1]) / 2 + Math.cos(t * 2 + index) * 10;
+        ctx.beginPath();
+        ctx.moveTo(pa[0], pa[1]);
+        ctx.quadraticCurveTo(midx, midy, pb[0], pb[1]);
+        ctx.strokeStyle = `rgba(242,205,114,${0.18 + gain * 0.1})`;
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+      });
+      points.forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(242,205,114,0.85)";
+        ctx.fill();
+      });
+    }
+
+    function drawCarrier(level, index, count, cx, cy, radius, dominant) {
+      const strength = Number(level.carrier_strength) || 0;
+      const energy = Number(level.energy) || 0;
+      const angle = index * Math.PI * 2 / Math.max(1, count) + t * (0.18 + index * 0.012);
+      const orbit = radius * (0.34 + index * 0.075);
+      const wobble = Math.sin(t * 3 + index) * 12;
+      const x = cx + Math.cos(angle) * (orbit + wobble);
+      const y = cy + Math.sin(angle) * (orbit - wobble);
+      const color = levelColors[level.level_id] || "#edf8ff";
+      ctx.beginPath();
+      ctx.arc(x, y, 7 + strength * 5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = level.level_id === dominant ? 0.95 : 0.46;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, orbit, 0, Math.PI * 2);
+      ctx.strokeStyle = level.level_id === dominant ? color : "rgba(237,248,255,0.08)";
+      ctx.lineWidth = level.level_id === dominant ? 2.2 : 0.8;
+      ctx.stroke();
+      ctx.fillStyle = "#edf8ff";
+      ctx.font = "12px Bahnschrift, Segoe UI, sans-serif";
+      ctx.fillText(level.level_id, x + 12, y + 4);
+      ctx.fillStyle = "rgba(237,248,255,0.55)";
+      ctx.font = "10px Bahnschrift, Segoe UI, sans-serif";
+      ctx.fillText(`E ${fmt(energy)}`, x + 12, y + 18);
+    }
+
+    function drawTrace(cx, cy, radius) {
+      const recent = state?.recent || [];
+      if (!recent.length) return;
+      ctx.beginPath();
+      recent.forEach((item, index) => {
+        const p = index / Math.max(1, recent.length - 1);
+        const angle = p * Math.PI * 2 + t * 0.28;
+        const r = radius * (0.62 + (Number(item.active_remainder) || 0) * 0.22);
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = "rgba(143,255,208,0.58)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function drawOpposingBridgeParticles(cx, cy, radius, gain, remainder) {
+      const recent = state?.recent || [];
+      const count = Math.max(12, recent.length * 6);
+      for (let i = 0; i < count; i += 1) {
+        const record = recent[i % Math.max(1, recent.length)] || {};
+        const p = (i / count + t * 0.08) % 1;
+        const reverse = i % 2 === 0 ? 1 : -1;
+        const angle = reverse * (p * Math.PI * 2 + i * 0.77 - t * 0.9);
+        const wave = Math.sin(t * 2.2 + i) * radius * 0.035;
+        const r = radius * (0.44 + 0.38 * p) + wave;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        const alpha = 0.18 + 0.34 * (Number(record.active_remainder) || remainder || 0.2);
+        ctx.beginPath();
+        ctx.arc(x, y, 2.2 + gain * 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = i % 2 === 0 ? `rgba(115,220,255,${alpha})` : `rgba(242,205,114,${alpha})`;
+        ctx.fill();
+      }
+    }
+
+    function drawDominanceTrail(cx, cy, radius) {
+      const recent = state?.recent || [];
+      if (!recent.length) return;
+      const order = ["R", "C", "H", "O", "S", "CD32", "A_n"];
+      recent.slice(-18).forEach((record, index, list) => {
+        const carrier = record.dominant_carrier || "R";
+        const level = Math.max(0, order.indexOf(carrier));
+        const p = list.length <= 1 ? 1 : index / (list.length - 1);
+        const x = cx - radius * 0.9 + p * radius * 1.8;
+        const y = cy + radius * 0.78 - level * 18;
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = levelColors[carrier] || "#edf8ff";
+        ctx.fill();
+        if (index > 0) {
+          const prev = list[index - 1];
+          const prevLevel = Math.max(0, order.indexOf(prev.dominant_carrier || "R"));
+          const px = cx - radius * 0.9 + ((index - 1) / (list.length - 1)) * radius * 1.8;
+          const py = cy + radius * 0.78 - prevLevel * 18;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(x, y);
+          ctx.strokeStyle = "rgba(237,248,255,0.34)";
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+        }
+      });
+      ctx.fillStyle = "rgba(237,248,255,0.58)";
+      ctx.font = "10px Bahnschrift, Segoe UI, sans-serif";
+      ctx.fillText("dominance trail", cx - radius * 0.9, cy + radius * 0.78 + 18);
+    }
+
+    function pct(value) {
+      return Math.max(0, Math.min(100, (Number(value) || 0) * 100));
+    }
+
+    function fmt(value) {
+      return (Number(value) || 0).toFixed(3);
+    }
+
+    window.addEventListener("resize", resize);
+    resize();
+    loadStatus();
+    setInterval(loadStatus, 1500);
+    draw();
+  </script>
+</body>
+</html>

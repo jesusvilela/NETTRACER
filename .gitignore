@@ -1,0 +1,14 @@
+data/
+data-*/
+node_modules/
+package-lock.json
+*.log
+*.bak
+.env
+.env.*
+bin/
+obj/
+publish/
+windows-service/**/bin/
+windows-service/**/obj/
+windows-service/publish/

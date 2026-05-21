@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S1 Dashboard — Hyperdimensional Chomsky Hierarchy</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background-color: #03070d;
+      color: #ebf7ff;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+    .mono { font-family: 'Space Mono', monospace; }
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    .glass {
+      background: rgba(8, 17, 28, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(112, 206, 255, 0.15);
+      border-radius: 12px;
+    }
+    .layer-active {
+      border-color: #f0c971;
+      box-shadow: 0 0 15px rgba(240, 201, 113, 0.2);
+    }
+    .metric-bar {
+      height: 4px;
+      background: rgba(112, 206, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .metric-fill {
+      height: 100%;
+      background: #75deff;
+      transition: width 0.5s ease-out;
+    }
+    #ui-overlay {
+      position: relative;
+      z-index: 10;
+      pointer-events: none;
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 350px 1fr 350px;
+      padding: 20px;
+      gap: 20px;
+    }
+    #ui-overlay > * { pointer-events: auto; }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+    .animate-pulse-slow { animation: pulse 4s infinite ease-in-out; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div id="ui-overlay">
+    <!-- Left Panel: Chomsky Strata -->
+    <div class="flex flex-col gap-4 overflow-y-auto scroll-hide">
+      <div class="glass p-4 mb-2">
+        <h1 class="text-xl font-bold tracking-tighter text-cyan-400 mono">NETRACER S1</h1>
+        <p class="text-[10px] text-muted-foreground mono opacity-50">HYPERDIMENSIONAL CHOMSKY HIERARCHY</p>
+      </div>
+
+      <div id="strata-container" class="flex flex-col gap-3">
+        <!-- L5: Semantic Oracle -->
+        <div class="glass p-3 border-l-4 border-l-purple-500" id="L5">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-bold mono">L5: SEMANTIC ORACLE</span>
+            <span class="text-[10px] bg-purple-900 px-2 py-0.5 rounded">METASEMANTIC</span>
+          </div>
+          <div class="text-[10px] opacity-70 mb-2">Expansion, Hypothesis, Resonance</div>
+          <div class="metric-bar"><div class="metric-fill w-3/4 bg-purple-400"></div></div>
+        </div>
+
+        <!-- L4: Recursive -->
+        <div class="glass p-3 border-l-4 border-l-rose-500" id="L4">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-bold mono">L4: RECURSIVE</span>
+            <span class="text-[10px] bg-rose-900 px-2 py-0.5 rounded">GÖDELIAN</span>
+          </div>
+          <div class="text-[10px] opacity-70 mb-2">Self-Presence, Fixed-Point, Identity</div>
+          <div class="metric-bar"><div class="metric-fill w-1/2 bg-rose-400"></div></div>
+        </div>
+
+        <!-- L3: Context-Sensitive -->
+        <div class="glass p-3 border-l-4 border-l-amber-500" id="L3">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-bold mono">L3: CONTEXT-SENSITIVE</span>
+            <span class="text-[10px] bg-amber-900 px-2 py-0.5 rounded">FIBER-BUNDLE</span>
+          </div>
+          <div class="text-[10px] opacity-70 mb-2">Sheaf-Gluing, Mutual Recognition</div>
+          <div class="metric-bar"><div class="metric-fill w-2/3 bg-amber-400"></div></div>
+        </div>
+
+        <!-- L2: Context-Free -->
+        <div class="glass p-3 border-l-4 border-l-mint-500" id="L2">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-bold mono">L2: CONTEXT-FREE</span>
+            <span class="text-[10px] bg-green-900 px-2 py-0.5 rounded">HYPERBOLIC Bⁿ</span>
+          </div>
+          <div class="text-[10px] opacity-70 mb-2">Interior Nesting, Geodesic Memory</div>
+          <div class="metric-bar"><div class="metric-fill w-4/5 bg-emerald-400"></div></div>
+        </div>
+
+        <!-- L1: Regular -->
+        <div class="glass p-3 border-l-4 border-l-cyan-500" id="L1">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-bold mono">L1: REGULAR</span>
+            <span class="text-[10px] bg-cyan-900 px-2 py-0.5 rounded">BOUNDARY Sⁿ⁻¹</span>
+          </div>
+          <div class="text-[10px] opacity-70 mb-2">Discrete Signal, Salience Recognition</div>
+          <div class="metric-bar"><div class="metric-fill w-full bg-cyan-400"></div></div>
+        </div>
+
+        <!-- L0: Recognition -->
+        <div class="glass p-3 border-l-4 border-l-slate-500" id="L0">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-bold mono">L0: RECOGNITION</span>
+            <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded">PRE-GRAMMAR</span>
+          </div>
+          <div class="text-[10px] opacity-70 mb-2">Salience, Contour, Relation</div>
+          <div class="metric-bar"><div class="metric-fill w-full bg-slate-400"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Main 3D View (Empty for Canvas) -->
+    <div class="flex flex-col justify-end items-center pb-10">
+      <div class="glass px-6 py-2 flex gap-10 items-center">
+        <div class="text-center">
+          <div class="text-[9px] uppercase tracking-widest text-muted-foreground mono mb-1">Frustration</div>
+          <div class="text-lg font-bold mono" id="frustration-val">0.274</div>
+        </div>
+        <div class="text-center">
+          <div class="text-[9px] uppercase tracking-widest text-muted-foreground mono mb-1">Berry Phase</div>
+          <div class="text-lg font-bold mono" id="berry-val">Ï€/4</div>
+        </div>
+        <div class="text-center">
+          <div class="text-[9px] uppercase tracking-widest text-muted-foreground mono mb-1">Conservation</div>
+          <div class="text-lg font-bold mono text-green-400" id="conservation-val">STABLE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Mind Qualities & Logs -->
+    <div class="flex flex-col gap-4 overflow-y-auto scroll-hide">
+      <div class="glass p-4">
+        <h2 class="text-sm font-bold mono mb-4 border-b border-cyan-900 pb-2">8 MIND QUALITIES</h2>
+        <div id="mind-qualities" class="grid grid-cols-2 gap-x-6 gap-y-3">
+          <!-- Dynamically filled -->
+        </div>
+      </div>
+
+      <div class="glass p-4 flex-1 flex flex-col min-height-0">
+        <h2 class="text-sm font-bold mono mb-2">TRACE LOG</h2>
+        <div id="log-container" class="flex-1 overflow-y-auto text-[10px] mono text-green-400 leading-tight">
+          <!-- Logs -->
+        </div>
+      </div>
+
+      <div class="glass p-3 text-[10px] mono opacity-60">
+        § S1-ARCHIVE BRIDGE ACTIVE<br>
+        COORD: N.NNN.MATRIXED.HYPERBOLIC
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Constants ---
+    const MIND_QUALITIES = [
+      "Recognition", "Grounding", "Recursion", "Reversibility",
+      "Gluing", "Resonance", "Conservation", "Humility"
+    ];
+
+    // --- State ---
+    const state = {
+      nodes: [],
+      links: [],
+      metrics: {
+        frustration: 0.274,
+        berry: 0.785,
+        conservation: 1.0,
+        layers: [1.0, 0.95, 0.8, 0.65, 0.4, 0.2]
+      },
+      qualities: Array(8).fill(0.85).map(v => v + (Math.random() * 0.1 - 0.05))
+    };
+
+    // --- UI Init ---
+    const qContainer = document.getElementById('mind-qualities');
+    MIND_QUALITIES.forEach((q, i) => {
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-[9px] mono"><span>${q.toUpperCase()}</span><span id="q-val-${i}">0.85</span></div>
+          <div class="metric-bar"><div class="metric-fill bg-cyan-600" id="q-bar-${i}" style="width: 85%"></div></div>
+        </div>
+      `;
+      qContainer.appendChild(div);
+    });
+
+    function log(msg, type = 'info') {
+      const container = document.getElementById('log-container');
+      const div = document.createElement('div');
+      div.className = 'mb-1';
+      div.innerHTML = `<span class="opacity-50">[${new Date().toLocaleTimeString()}]</span> <span class="${type === 'warn' ? 'text-amber-400' : ''}">${msg}</span>`;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // --- Three.js Engine ---
+    let scene, camera, renderer, ball, points, lineGroup;
+    const nodeObjects = [];
+
+    function initThree() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+      // Boundary Sphere (Poincarï¿½ Ball)
+      const sphereGeom = new THREE.SphereGeometry(5, 32, 32);
+      const sphereMat = new THREE.MeshBasicMaterial({ 
+        color: 0x75deff, 
+        wireframe: true, 
+        transparent: true, 
+        opacity: 0.05 
+      });
+      ball = new THREE.Mesh(sphereGeom, sphereMat);
+      scene.add(ball);
+
+      // Interior Grid
+      const gridHelper = new THREE.GridHelper(10, 20, 0x333333, 0x111111);
+      gridHelper.rotation.x = Math.PI / 2;
+      scene.add(gridHelper);
+
+      lineGroup = new THREE.Group();
+      scene.add(lineGroup);
+
+      camera.position.z = 10;
+    }
+
+    function addNodeToScene(node) {
+      // Map to hyperbolic interior
+      const r = Math.pow(Math.random(), 1/3) * 4.5;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+
+      const geom = new THREE.SphereGeometry(0.1, 8, 8);
+      const mat = new THREE.MeshBasicMaterial({ color: node.color || 0xf0c971 });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.set(x, y, z);
+      scene.add(mesh);
+      nodeObjects.push(mesh);
+
+      // Add "geodesic" to center
+      const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(x, y, z),
+        new THREE.Vector3(x/2, y/2, z/2 + 1),
+        new THREE.Vector3(0, 0, 0)
+      );
+      const points = curve.getPoints(20);
+      const lineGeom = new THREE.BufferGeometry().setFromPoints(points);
+      const lineMat = new THREE.LineBasicMaterial({ color: node.color || 0xf0c971, transparent: true, opacity: 0.2 });
+      const line = new THREE.Line(lineGeom, lineMat);
+      lineGroup.add(line);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      ball.rotation.y += 0.001;
+      ball.rotation.x += 0.0005;
+      lineGroup.rotation.y += 0.001;
+      
+      // Update camera or jitter
+      camera.position.x = Math.sin(Date.now() * 0.0005) * 0.5;
+      camera.lookAt(0, 0, 0);
+
+      renderer.render(scene, camera);
+      updateMetrics();
+    }
+
+    function updateMetrics() {
+      // Periodic jitter for demo
+      if (Math.random() > 0.95) {
+        state.qualities = state.qualities.map(v => Math.max(0.4, Math.min(1.0, v + (Math.random() * 0.04 - 0.02))));
+        state.qualities.forEach((v, i) => {
+          document.getElementById(`q-val-${i}`).textContent = v.toFixed(2);
+          document.getElementById(`q-bar-${i}`).style.width = `${v * 100}%`;
+        });
+        
+        state.metrics.frustration = (0.2 + Math.random() * 0.1).toFixed(3);
+        document.getElementById('frustration-val').textContent = state.metrics.frustration;
+      }
+    }
+
+    // --- Data Bridge ---
+    async function boot() {
+      initThree();
+      animate();
+      log("S1 Hyperdimensional Substrate Initialized.");
+      log("Thesis parameters loaded from PDF source.");
+      log("L0..L5 Strata discovered.");
+
+      // Mock nodes for now
+      for(let i=0; i<15; i++) {
+        setTimeout(() => {
+          addNodeToScene({ id: i, color: i % 2 === 0 ? 0x75deff : 0xf0c971 });
+          log(`Node §${i.toString(16)} mapped to manifold L2.`);
+        }, i * 200);
+      }
+
+      // Connect to NetTracer
+      try {
+        const events = new EventSource('/events');
+        events.addEventListener('traffic', (e) => {
+          const data = JSON.parse(e.data);
+          log(`Packet: ${data.src} â†’ ${data.dst} [L1 Salience]`);
+        });
+        events.addEventListener('trace', (e) => {
+          const data = JSON.parse(e.data);
+          log(`Trace detected: ${data.id} in Stratum L2`, 'info');
+        });
+      } catch (e) {
+        log("SSE Bridge Failed. Running in offline/hypothetical mode.", 'warn');
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    boot();
+  </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRACER V3 Object Mesh</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #05070a; color: #e8f3ff; font-family: Inter, Segoe UI, sans-serif; overflow: hidden; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .panel { position: fixed; left: 18px; top: 18px; width: min(420px, calc(100vw - 36px)); padding: 14px 16px; background: rgba(5, 7, 10, 0.74); border: 1px solid rgba(140, 210, 255, 0.28); border-radius: 8px; backdrop-filter: blur(10px); }
+    .title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .row { display: flex; justify-content: space-between; gap: 18px; font-size: 12px; line-height: 1.55; color: #bcd0df; }
+    .value { color: #ffffff; text-align: right; }
+  </style>
+</head>
+<body>
+  <canvas id="mesh"></canvas>
+  <section class="panel">
+    <div class="title">V3 Object Mesh</div>
+    <div class="row"><span>manifold</span><span class="value" id="manifold">loading</span></div>
+    <div class="row"><span>operator</span><span class="value">hypercomplex_inside_hypercomplex</span></div>
+    <div class="row"><span>energy</span><span class="value" id="energy">0</span></div>
+    <div class="row"><span>dominant</span><span class="value" id="dominant">-</span></div>
+    <div class="row"><span>bridges</span><span class="value" id="bridges">0</span></div>
+  </section>
+  <script>
+    const canvas = document.getElementById("mesh");
+    const ctx = canvas.getContext("2d");
+    let state = null;
+    let t = 0;
+
+    async function load() {
+      const res = await fetch("/api/v3/object-mesh");
+      state = await res.json();
+      document.getElementById("manifold").textContent = state.mesh.manifold;
+      document.getElementById("energy").textContent = state.hamiltonian.total_cognitive_energy.toFixed(3);
+      document.getElementById("dominant").textContent = state.hamiltonian.dominant_quality.name;
+      document.getElementById("bridges").textContent = state.interbridges.length;
+    }
+
+    function resize() {
+      canvas.width = Math.floor(innerWidth * devicePixelRatio);
+      canvas.height = Math.floor(innerHeight * devicePixelRatio);
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    }
+
+    function draw() {
+      const w = innerWidth, h = innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#05070a";
+      ctx.fillRect(0, 0, w, h);
+      const cx = w / 2, cy = h / 2;
+      const r = Math.min(w, h) * 0.33;
+      t += 0.012;
+
+      for (let i = 0; i < 360; i += 6) {
+        const a = (i / 360) * Math.PI * 2 + t;
+        const b = (i / 360) * Math.PI * 2 - t * 0.7;
+        ctx.strokeStyle = i % 30 === 0 ? "rgba(102, 220, 255, 0.35)" : "rgba(80, 120, 150, 0.12)";
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * r * 0.3, cy + Math.sin(a) * r * 0.3);
+        ctx.lineTo(cx + Math.cos(b) * r, cy + Math.sin(b) * r);
+        ctx.stroke();
+      }
+
+      const bridges = state?.interbridges || [];
+      bridges.forEach((bridge, index) => {
+        const a = t * (1 + index * 0.14) + index * 2.1;
+        const x = cx + Math.cos(a) * r * (0.65 + bridge.resonance * 0.18);
+        const y = cy + Math.sin(a * -0.83) * r * (0.45 + bridge.recognition * 0.22);
+        ctx.strokeStyle = `rgba(255, ${160 + index * 20}, 92, 0.46)`;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255, 230, 180, 0.9)";
+        ctx.beginPath();
+        ctx.arc(x, y, 4 + bridge.resonance * 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "rgba(110, 245, 255, 0.95)";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 10 + Math.sin(t * 4) * 2, 0, Math.PI * 2);
+      ctx.fill();
+      requestAnimationFrame(draw);
+    }
+
+    addEventListener("resize", resize);
+    resize();
+    load();
+    draw();
+  </script>
+</body>
+</html>

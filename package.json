@@ -1,0 +1,14 @@
+{
+  "name": "netracer",
+  "version": "0.1.0",
+  "description": "Observability, packet tracing, and local AI brokerage for section-language substrate traffic",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
