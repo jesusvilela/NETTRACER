@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRACER V6 Hypercomplex World</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #010307; color: #effaff; font-family: Inter, Segoe UI, sans-serif; }
+    canvas { width: 100vw; height: 100vh; display: block; background: #010307; }
+    .hud { position: fixed; top: 18px; left: 18px; width: min(520px, calc(100vw - 36px)); padding: 14px 16px; border: 1px solid rgba(127, 225, 255, .32); border-radius: 8px; background: rgba(1, 5, 9, .68); backdrop-filter: blur(14px); pointer-events: none; }
+    .title { font-size: 15px; font-weight: 850; margin-bottom: 9px; }
+    .row { display: flex; justify-content: space-between; gap: 14px; color: #b9cedb; font-size: 12px; line-height: 1.55; }
+    .value { color: #fff; text-align: right; }
+    .legend { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(127, 225, 255, .2); color: #dceff7; font-size: 12px; line-height: 1.45; }
+    .reticle { position: fixed; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border: 1px solid rgba(151, 240, 255, .48); border-radius: 50%; pointer-events: none; box-shadow: 0 0 30px rgba(151, 240, 255, .2); }
+    .reticle::before, .reticle::after { content: ""; position: absolute; background: rgba(151, 240, 255, .56); }
+    .reticle::before { width: 20px; height: 1px; left: 19px; top: 28px; }
+    .reticle::after { width: 1px; height: 20px; left: 28px; top: 19px; }
+    .label { position: fixed; transform: translate(-50%, -50%); padding: 4px 7px; border-radius: 6px; background: rgba(1, 4, 8, .72); border: 1px solid rgba(141, 231, 255, .36); color: #f2fbff; font-size: 11px; font-weight: 850; pointer-events: none; white-space: nowrap; }
+    .dock { position: fixed; right: 18px; bottom: 18px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .dock a, .dock button { border: 0; border-radius: 8px; padding: 9px 11px; color: #031019; background: #8ee7ff; font-weight: 850; font-size: 12px; text-decoration: none; }
+    .dock button.active { background: #ffc45d; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="reticle"></div>
+  <section class="hud">
+    <div class="title">V6 Hypercomplex World</div>
+    <div class="row"><span>mode</span><span class="value" id="mode">loading</span></div>
+    <div class="row"><span>target</span><span class="value" id="target">4K AAA WebGL</span></div>
+    <div class="row"><span>dominant</span><span class="value" id="dominant">-</span></div>
+    <div class="row"><span>energy</span><span class="value" id="energy">total cognitive energy</span></div>
+    <div class="row"><span>traffic</span><span class="value" id="traffic">-</span></div>
+    <div class="row"><span>world</span><span class="value" id="world">seed spinner-hand</span></div>
+    <div class="row"><span>position</span><span class="value" id="position">0 0 0</span></div>
+    <div class="legend">First-person: click to lock mouse. WASD move, Shift boost, Space ascend, C descend, R reset. This is a 3D world runtime over the V5 manifold, not a 2D projection.</div>
+  </section>
+  <div id="labels"></div>
+  <nav class="dock">
+    <a href="/v5/aaa-cosmos">V5</a>
+    <a href="/v4/version-cage">V4</a>
+    <button id="quality" class="active">4K AAA</button>
+    <button id="reset">Reset</button>
+  </nav>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: true, alpha: false, depth: true });
+    if (!gl) document.body.innerHTML = "<p>WebGL unavailable.</p>";
+    const labels = document.getElementById("labels");
+    let state = null, time = 0, quality = 1.5;
+    let yaw = 0.1, pitch = -0.06;
+    let pos = [0, 0.7, 13], vel = [0, 0, 0];
+    const keys = new Set();
+
+    const vs = `
+      attribute vec3 position; attribute vec3 color;
+      uniform mat4 mvp; uniform float pointScale;
+      varying vec3 vColor;
+      void main(){ vColor=color; gl_Position=mvp*vec4(position,1.0); gl_PointSize=pointScale/max(.22,gl_Position.w); }
+    `;
+    const fsPoint = `
+      precision mediump float; varying vec3 vColor;
+      void main(){ vec2 p=gl_PointCoord*2.0-1.0; float d=dot(p,p); if(d>1.0) discard; float g=1.0-smoothstep(.05,1.0,d); gl_FragColor=vec4(vColor*(.45+g*1.4),1.0); }
+    `;
+    const fsLine = `precision mediump float; varying vec3 vColor; void main(){ gl_FragColor=vec4(vColor,1.0); }`;
+    const pointProgram = program(vs, fsPoint), lineProgram = program(vs, fsLine);
+    const pointBuffer = gl.createBuffer(), lineBuffer = gl.createBuffer();
+
+    async function load() {
+      const response = await fetch("/api/v6/hypercomplex-world", { cache: "no-store" });
+      state = await response.json();
+      document.getElementById("mode").textContent = state.mode.replaceAll("_", " ");
+      document.getElementById("target").textContent = `${state.target_hardware.target_resolution} · ${state.target_hardware.gpu_class}`;
+      document.getElementById("dominant").textContent = `${state.cognition_ascent.current_dominant_carrier} · ${state.cognition_ascent.progress_signal}`;
+      document.getElementById("traffic").textContent = `${state.lab_traffic.traffic_count} events · ${state.lab_traffic.topology_nodes} nodes`;
+      document.getElementById("world").textContent = state.seed_object.runtime_body.replaceAll("_", " ");
+    }
+
+    function frame() {
+      resize(); time += 0.016; move();
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.clearColor(0.002, 0.009, 0.018, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      const projection = perspective(68 * Math.PI / 180, canvas.width / Math.max(1, canvas.height), 0.06, 160);
+      const fwd = forward();
+      const view = lookAt(pos, [pos[0]+fwd[0], pos[1]+fwd[1], pos[2]+fwd[2]], [0,1,0]);
+      const vp = multiply(projection, view);
+      drawCosmoShells(vp); drawSeedSpinnerHand(vp); drawWorlds(vp); drawPortals(vp); drawDominanceTowers(vp); drawTraffic(vp); updateLabels(vp);
+      document.getElementById("position").textContent = pos.map((v) => v.toFixed(1)).join(" ");
+      requestAnimationFrame(frame);
+    }
+
+    function drawCosmoShells(vp) {
+      const v = [];
+      for (let shell = 0; shell < 7; shell++) {
+        const r = 4 + shell * 2.1;
+        for (let i = 0; i <= 220; i++) {
+          const a = i / 220 * Math.PI * 2;
+          const tilt = shell * 0.37;
+          v.push(Math.cos(a + time*.07) * r, Math.sin(a*3 + time*.4) * .45 + shell*.28 - 1.5, Math.sin(a + tilt) * r, .12, .62, 1.0);
+        }
+      }
+      draw(lineProgram, lineBuffer, v, gl.LINE_STRIP, vp, 1);
+    }
+
+    function drawSeedSpinnerHand(vp) {
+      const v = [];
+      for (let finger = 0; finger < 5; finger++) {
+        for (let i = 0; i < 80; i++) {
+          const u = i / 79, a = u * Math.PI * 7 + finger * Math.PI * .4 + time;
+          const r = .35 + u * 3.2;
+          v.push(Math.cos(a) * r, 1.2 + Math.sin(u*Math.PI)*1.8 + finger*.08, Math.sin(a) * r, .75, 1.0, .78);
+        }
+      }
+      draw(lineProgram, lineBuffer, v, gl.LINE_STRIP, vp, 1);
+      draw(pointProgram, pointBuffer, [0,1.2,0, .9,1,.72], gl.POINTS, vp, 520);
+    }
+
+    function drawWorlds(vp) {
+      if (!state) return;
+      const colors = [[.46,.96,1],[1,.66,.26],[.82,.56,1]], v = [];
+      state.worlds.forEach((w, i) => v.push(...w.position, ...colors[i % colors.length]));
+      draw(pointProgram, pointBuffer, v, gl.POINTS, vp, 620);
+    }
+
+    function drawPortals(vp) {
+      if (!state) return;
+      const byId = Object.fromEntries(state.worlds.map((w) => [w.id, w]));
+      const v = [];
+      state.portals.forEach((p, i) => {
+        const a = byId[p.from]?.position, b = byId[p.to]?.position; if (!a || !b) return;
+        const m = bridgePoint(a, b, .5, i);
+        for (let j = 0; j <= 90; j++) {
+          const q = j / 90 * Math.PI * 2;
+          v.push(m[0] + Math.cos(q)*1.1, m[1] + Math.sin(q)*1.5, m[2], 1, .6 + i*.12, .22 + i*.22);
+        }
+      });
+      draw(lineProgram, lineBuffer, v, gl.LINE_STRIP, vp, 1);
+    }
+
+    function drawDominanceTowers(vp) {
+      if (!state) return;
+      const v = [];
+      state.cognition_ascent.levels.forEach((level, i) => {
+        const x = -7 + i * 3.5, h = 1.2 + i * .8 + (level.id === state.cognition_ascent.current_dominant_carrier ? 2.2 : 0);
+        v.push(x, -2, -8, .55, .9, 1, x, -2 + h, -8, .55, .9, 1);
+      });
+      draw(lineProgram, lineBuffer, v, gl.LINES, vp, 1);
+    }
+
+    function drawTraffic(vp) {
+      if (!state?.lab_traffic?.pulses?.length) return;
+      const byId = Object.fromEntries(state.worlds.map((w) => [w.id, w]));
+      const v = [];
+      state.lab_traffic.pulses.forEach((pulse, i) => {
+        const [from, to] = pulse.route.split("->");
+        const a = byId[from]?.position, b = byId[to]?.position; if (!a || !b) return;
+        const p = bridgePoint(a, b, (time*.22 + i*.11) % 1, i);
+        v.push(p[0], p[1], p[2], .95, .95, 1);
+      });
+      draw(pointProgram, pointBuffer, v, gl.POINTS, vp, 200);
+    }
+
+    function updateLabels(vp) {
+      if (!state) return;
+      const nodes = [
+        ...state.worlds.map((w) => ({ text: `${w.id} · ${w.biome}`, pos: w.position })),
+        { text: state.seed_object.id, pos: [0, 3.4, 0] },
+        ...state.cognition_ascent.levels.map((l, i) => ({ text: `${l.id} ${l.algebra}`, pos: [-7 + i*3.5, .8 + i*.8, -8] }))
+      ];
+      labels.innerHTML = nodes.map((n) => {
+        const p = project(n.pos, vp);
+        return p.visible ? `<div class="label" style="left:${p.x}px;top:${p.y}px">${n.text}</div>` : "";
+      }).join("");
+    }
+
+    function move() {
+      const f = forward(), r = normalize([f[2], 0, -f[0]]);
+      const speed = keys.has("Shift") ? .17 : .07;
+      const add = [0,0,0];
+      if (keys.has("w")) addVec(add, f, speed); if (keys.has("s")) addVec(add, f, -speed);
+      if (keys.has("d")) addVec(add, r, speed); if (keys.has("a")) addVec(add, r, -speed);
+      if (keys.has(" ")) add[1] += speed; if (keys.has("c")) add[1] -= speed;
+      vel = [vel[0]*.82 + add[0], vel[1]*.82 + add[1], vel[2]*.82 + add[2]];
+      pos = [pos[0]+vel[0], pos[1]+vel[1], pos[2]+vel[2]];
+    }
+
+    function draw(activeProgram, buffer, vertices, mode, mvp, pointScale) {
+      gl.useProgram(activeProgram); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+      const p = gl.getAttribLocation(activeProgram, "position"), c = gl.getAttribLocation(activeProgram, "color");
+      gl.enableVertexAttribArray(p); gl.enableVertexAttribArray(c);
+      gl.vertexAttribPointer(p, 3, gl.FLOAT, false, 24, 0); gl.vertexAttribPointer(c, 3, gl.FLOAT, false, 24, 12);
+      gl.uniformMatrix4fv(gl.getUniformLocation(activeProgram, "mvp"), false, new Float32Array(mvp));
+      const scale = gl.getUniformLocation(activeProgram, "pointScale"); if (scale) gl.uniform1f(scale, pointScale);
+      gl.drawArrays(mode, 0, vertices.length / 6);
+    }
+    function bridgePoint(a,b,u,i){ const lift=Math.sin(u*Math.PI)*(2.4+i*.8), swirl=Math.sin(time*2.5+u*18+i)*.5; return [lerp(a[0],b[0],u)+swirl,lerp(a[1],b[1],u)+lift,lerp(a[2],b[2],u)+Math.cos(time*1.7+u*9+i)*.5]; }
+    function resize(){ const dpr=Math.min(quality, devicePixelRatio||1); const w=Math.floor(innerWidth*dpr), h=Math.floor(innerHeight*dpr); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+    function forward(){ return normalize([Math.sin(yaw)*Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw)*Math.cos(pitch)]); }
+    function project(p,m){ const w=m[3]*p[0]+m[7]*p[1]+m[11]*p[2]+m[15]; if(w<=.05)return{visible:false}; const x=(m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12])/w, y=(m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13])/w; return{visible:Math.abs(x)<1.25&&Math.abs(y)<1.25,x:(x*.5+.5)*innerWidth,y:(-y*.5+.5)*innerHeight}; }
+    function program(vs,fs){ const p=gl.createProgram(); gl.attachShader(p,shader(gl.VERTEX_SHADER,vs)); gl.attachShader(p,shader(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)); return p; }
+    function shader(t,s){ const h=gl.createShader(t); gl.shaderSource(h,s); gl.compileShader(h); if(!gl.getShaderParameter(h,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(h)); return h; }
+    function perspective(fovy,aspect,near,far){ const f=1/Math.tan(fovy/2), nf=1/(near-far); return [f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,(2*far*near)*nf,0]; }
+    function lookAt(e,c,u){ const z=normalize([e[0]-c[0],e[1]-c[1],e[2]-c[2]]), x=normalize(cross(u,z)), y=cross(z,x); return [x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,e),-dot(y,e),-dot(z,e),1]; }
+    function multiply(a,b){ const o=new Array(16).fill(0); for(let r=0;r<4;r++)for(let c=0;c<4;c++)for(let k=0;k<4;k++)o[c*4+r]+=a[k*4+r]*b[c*4+k]; return o; }
+    function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];} function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+    function normalize(v){ const l=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/l,v[1]/l,v[2]/l]; } function lerp(a,b,u){return a+(b-a)*u;} function addVec(a,b,s){a[0]+=b[0]*s;a[1]+=b[1]*s;a[2]+=b[2]*s;}
+    addEventListener("keydown", e => { keys.add(e.key.length === 1 ? e.key.toLowerCase() : e.key); if(e.key.toLowerCase()==="r"){pos=[0,.7,13];vel=[0,0,0];yaw=.1;pitch=-.06;} });
+    addEventListener("keyup", e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+    canvas.addEventListener("click", () => canvas.requestPointerLock?.());
+    addEventListener("mousemove", e => { if(document.pointerLockElement !== canvas) return; yaw -= e.movementX*.0025; pitch = Math.max(-1.35, Math.min(1.35, pitch - e.movementY*.0025)); });
+    document.getElementById("quality").addEventListener("click", () => { quality = quality === 1.5 ? 2 : 1.5; document.getElementById("quality").textContent = quality === 2 ? "4K MAX" : "4K AAA"; });
+    document.getElementById("reset").addEventListener("click", () => { pos=[0,.7,13]; vel=[0,0,0]; yaw=.1; pitch=-.06; });
+    load(); setInterval(load, 2500); frame();
+  </script>
+</body>
+</html>
