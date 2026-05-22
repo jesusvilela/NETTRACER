@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRACER V4 Version Cage</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #030508; color: #ecf7ff; font-family: Inter, Segoe UI, sans-serif; overflow: hidden; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .hud { position: fixed; inset: 18px auto auto 18px; width: min(460px, calc(100vw - 36px)); padding: 14px 16px; border: 1px solid rgba(127, 220, 255, .32); border-radius: 8px; background: rgba(3, 5, 8, .76); backdrop-filter: blur(12px); }
+    .title { font-weight: 800; font-size: 15px; margin-bottom: 8px; }
+    .row { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; line-height: 1.55; color: #bad0dd; }
+    .value { color: #fff; text-align: right; }
+    .links { position: fixed; right: 18px; bottom: 18px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .links a { color: #041018; background: #8fe7ff; text-decoration: none; font-weight: 700; font-size: 12px; padding: 8px 10px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <canvas id="cage"></canvas>
+  <section class="hud">
+    <div class="title">V4 Version Cage</div>
+    <div class="row"><span>cage</span><span class="value" id="cageName">loading</span></div>
+    <div class="row"><span>operator</span><span class="value">hypercomplex_inside_hypercomplex</span></div>
+    <div class="row"><span>versions</span><span class="value" id="versions">0</span></div>
+    <div class="row"><span>bridges</span><span class="value" id="bridges">0</span></div>
+    <div class="row"><span>energy</span><span class="value" id="energy">0</span></div>
+    <div class="row"><span>gluing</span><span class="value" id="gluing">0</span></div>
+  </section>
+  <nav class="links">
+    <a href="http://127.0.0.1:8787/">V1</a>
+    <a href="http://127.0.0.1:8788/cognition">V2</a>
+    <a href="http://127.0.0.1:8789/v3/object-mesh">V3</a>
+  </nav>
+  <script>
+    const canvas = document.getElementById("cage");
+    const ctx = canvas.getContext("2d");
+    let data = null;
+    let t = 0;
+
+    async function load() {
+      const response = await fetch("/api/v4/version-cage");
+      data = await response.json();
+      document.getElementById("cageName").textContent = data.cage.mesh;
+      document.getElementById("versions").textContent = data.versions.length;
+      document.getElementById("bridges").textContent = data.bridges.length;
+      document.getElementById("energy").textContent = data.hamiltonian.total_cognitive_energy.toFixed(3);
+      document.getElementById("gluing").textContent = data.hamiltonian.gluing_evidence.toFixed(3);
+    }
+
+    function resize() {
+      canvas.width = Math.floor(innerWidth * devicePixelRatio);
+      canvas.height = Math.floor(innerHeight * devicePixelRatio);
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    }
+
+    function draw() {
+      const w = innerWidth;
+      const h = innerHeight;
+      const cx = w / 2;
+      const cy = h / 2;
+      const radius = Math.min(w, h) * 0.32;
+      t += 0.01;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#030508";
+      ctx.fillRect(0, 0, w, h);
+
+      for (let ring = 0; ring < 7; ring += 1) {
+        ctx.strokeStyle = `rgba(94, 170, 210, ${0.09 + ring * 0.025})`;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, radius * (0.35 + ring * 0.11), radius * (0.18 + ring * 0.07), t * (ring % 2 ? -1 : 1), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      const versions = data?.versions || [];
+      const points = versions.map((node, index) => {
+        const angle = t * 0.45 + index * Math.PI * 2 / Math.max(1, versions.length);
+        return {
+          node,
+          x: cx + Math.cos(angle) * radius,
+          y: cy + Math.sin(angle) * radius * 0.72
+        };
+      });
+
+      (data?.bridges || []).forEach((bridge, index) => {
+        const a = points.find((point) => point.node.id === bridge.from);
+        const b = points.find((point) => point.node.id === bridge.to);
+        if (!a || !b) return;
+        const mx = (a.x + b.x) / 2 + Math.cos(t * 2 + index) * 80;
+        const my = (a.y + b.y) / 2 + Math.sin(t * 2 - index) * 46;
+        ctx.strokeStyle = `rgba(255, ${170 + index * 22}, 92, 0.62)`;
+        ctx.lineWidth = 2 + bridge.gluing_evidence * 2;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.quadraticCurveTo(mx, my, b.x, b.y);
+        ctx.stroke();
+      });
+
+      points.forEach((point, index) => {
+        const pulse = 1 + Math.sin(t * 5 + index) * 0.08;
+        ctx.fillStyle = ["#79f2ff", "#ffc36b", "#cda5ff"][index % 3];
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, (28 + point.node.energy) * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#031018";
+        ctx.font = "700 15px Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(point.node.id, point.x, point.y);
+      });
+
+      requestAnimationFrame(draw);
+    }
+
+    addEventListener("resize", resize);
+    resize();
+    load();
+    draw();
+  </script>
+</body>
+</html>

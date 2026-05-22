@@ -11,6 +11,7 @@ import { HyperdomEngine } from "./hyperdom-engine.js";
 import { absorbJuPayload, getJuCognitionAtlas, getJuCognitionStatus, getJuCognitionTrace, getJuStats } from "./nnn-bridge.js";
 import { buildEpic1ScanPreview } from "./epic1-product.js";
 import { buildV3ObjectMesh } from "./v3-object-mesh.js";
+import { buildV4VersionCage } from "./v4-version-cage.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -150,6 +151,10 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         }));
       }
 
+      if (request.method === "GET" && url.pathname === "/api/v4/version-cage") {
+        return sendJson(response, 200, buildV4VersionCage());
+      }
+
       if (request.method === "GET" && url.pathname === "/api/telos/manifest") {
         return sendJson(response, 200, telosEngine.version);
       }
@@ -258,6 +263,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/v3/object-mesh") {
         const filePath = path.resolve("./src/v3-object-mesh.html");
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          response.writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store, must-revalidate"
+          });
+          response.end(content);
+        } catch (e) {
+          console.error(`[ERR] Failed to serve ${url.pathname}:`, e.message);
+          response.writeHead(404);
+          response.end(`${url.pathname} not found`);
+        }
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v4/version-cage") {
+        const filePath = path.resolve("./src/v4-version-cage.html");
         try {
           const content = await fs.promises.readFile(filePath, "utf8");
           response.writeHead(200, {
