@@ -15,5 +15,7 @@ test("V5 AAA cosmos projects V4 into a GPU 3D navigable manifold", () => {
   assert.deepEqual(result.worlds.map((world) => world.id), ["V1", "V2", "V3"]);
   assert.equal(result.bridges.length, 3);
   assert.ok(result.bridges.every((bridge) => bridge.tunnel === "volumetric_crossable_bridge"));
+  assert.equal(result.navigator_ship.mode, "inside_network_flight");
+  assert.deepEqual(result.navigator_ship.default_route, ["V1", "V2", "V3", "V1"]);
   assert.equal(result.invariants.no_flat_canvas_final, true);
 });

@@ -8,16 +8,25 @@
     html, body { margin: 0; height: 100%; overflow: hidden; background: #010306; color: #eef8ff; font-family: Inter, Segoe UI, sans-serif; }
     canvas { width: 100vw; height: 100vh; display: block; cursor: grab; }
     canvas:active { cursor: grabbing; }
-    .hud { position: fixed; top: 18px; left: 18px; width: min(440px, calc(100vw - 36px)); padding: 14px 16px; border: 1px solid rgba(118, 220, 255, .28); border-radius: 8px; background: rgba(1, 3, 6, .66); backdrop-filter: blur(12px); pointer-events: none; }
+    .hud { position: fixed; top: 18px; left: 18px; width: min(480px, calc(100vw - 36px)); padding: 14px 16px; border: 1px solid rgba(118, 220, 255, .28); border-radius: 8px; background: rgba(1, 3, 6, .66); backdrop-filter: blur(12px); pointer-events: none; }
     .title { font-size: 14px; font-weight: 800; margin-bottom: 8px; }
     .row { display: flex; justify-content: space-between; gap: 12px; color: #b8cbd7; font-size: 12px; line-height: 1.55; }
     .value { color: #fff; text-align: right; }
+    .legend { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(118, 220, 255, .18); color: #d7eef8; font-size: 12px; line-height: 1.45; }
+    .label { position: fixed; transform: translate(-50%, -50%); padding: 4px 7px; border-radius: 6px; background: rgba(1, 3, 6, .68); border: 1px solid rgba(141, 231, 255, .35); color: #eefaff; font-size: 11px; font-weight: 800; pointer-events: none; white-space: nowrap; }
+    .label.bridge { color: #ffd68a; border-color: rgba(255, 191, 94, .35); font-weight: 700; }
+    .reticle { position: fixed; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border: 1px solid rgba(142, 231, 255, .46); border-radius: 50%; pointer-events: none; box-shadow: 0 0 24px rgba(142, 231, 255, .16); }
+    .reticle::before, .reticle::after { content: ""; position: absolute; background: rgba(142, 231, 255, .52); }
+    .reticle::before { width: 18px; height: 1px; left: 18px; top: 26px; }
+    .reticle::after { width: 1px; height: 18px; left: 26px; top: 18px; }
     .dock { position: fixed; right: 18px; bottom: 18px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
     .dock a, .dock button { border: 0; border-radius: 8px; padding: 9px 11px; color: #031019; background: #8ee7ff; font-weight: 800; font-size: 12px; text-decoration: none; }
+    .dock button.active { background: #ffc45d; }
   </style>
 </head>
 <body>
   <canvas id="gl"></canvas>
+  <div class="reticle"></div>
   <section class="hud">
     <div class="title">V5 AAA Cosmos</div>
     <div class="row"><span>projection</span><span class="value" id="projection">loading</span></div>
@@ -25,13 +34,20 @@
     <div class="row"><span>worlds</span><span class="value" id="worlds">0</span></div>
     <div class="row"><span>bridges</span><span class="value" id="bridges">0</span></div>
     <div class="row"><span>codec</span><span class="value">§-LANG / nnn-ramdisk</span></div>
-    <div class="row"><span>focus</span><span class="value" id="focus">free orbit</span></div>
+    <div class="row"><span>focus</span><span class="value" id="focus">inside route</span></div>
+    <div class="row"><span>ship</span><span class="value" id="shipMode">inside network</span></div>
+    <div class="row"><span>bridge</span><span class="value" id="bridgeReadout">none</span></div>
+    <div class="row"><span>translation</span><span class="value" id="translation">-</span></div>
+    <div class="legend" id="legend">Navigator ship starts inside the network. Press N to orbit outside. Space/Next advances bridge. Keys 1-3 focus worlds.</div>
   </section>
+  <div id="labels"></div>
   <nav class="dock">
     <a href="http://127.0.0.1:8787/">V1</a>
     <a href="http://127.0.0.1:8788/cognition">V2</a>
     <a href="http://127.0.0.1:8789/v3/object-mesh">V3</a>
     <a href="/v4/version-cage">V4</a>
+    <button id="ship">Ship</button>
+    <button id="next">Next</button>
     <button id="reset">Reset</button>
   </nav>
   <script>
@@ -48,6 +64,10 @@
     let lastY = 0;
     let focus = [0, 0, 0];
     let time = 0;
+    let shipMode = true;
+    let routeIndex = 0;
+    let routeT = 0;
+    const labels = document.getElementById("labels");
 
     const vs = `
       attribute vec3 position;
@@ -90,6 +110,7 @@
       document.getElementById("worlds").textContent = state.worlds.length;
       document.getElementById("bridges").textContent = state.bridges.length;
       document.getElementById("gpu").textContent = gl.getParameter(gl.RENDERER);
+      updateInfo();
     }
 
     function render() {
@@ -103,17 +124,30 @@
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       const aspect = canvas.width / Math.max(1, canvas.height);
       const projection = perspective(55 * Math.PI / 180, aspect, 0.1, 100);
-      const eye = [
+      const ship = shipState();
+      const eye = shipMode ? ship.eye : [
         focus[0] + Math.cos(yaw) * Math.cos(pitch) * distance,
         focus[1] + Math.sin(pitch) * distance,
         focus[2] + Math.sin(yaw) * Math.cos(pitch) * distance
       ];
-      const view = lookAt(eye, focus, [0, 1, 0]);
+      const target = shipMode ? ship.target : focus;
+      const view = lookAt(eye, target, [0, 1, 0]);
       const vp = multiply(projection, view);
 
       drawCage(vp);
       drawBridges(vp);
+      drawBridgeMarkers(vp);
       drawWorlds(vp);
+      drawShip(vp, ship);
+      updateLabels(vp, ship);
+      if (shipMode) {
+        routeT += 0.0028;
+        if (routeT > 1) {
+          routeT = 0;
+          routeIndex = (routeIndex + 1) % (state?.bridges?.length || 1);
+          updateInfo();
+        }
+      }
       requestAnimationFrame(render);
     }
 
@@ -149,6 +183,31 @@
       drawArray(lineProgram, lineBuffer, vertices, gl.LINE_STRIP, vp, 1);
     }
 
+    function drawBridgeMarkers(vp) {
+      if (!state) return;
+      const byId = Object.fromEntries(state.worlds.map((world) => [world.id, world]));
+      const vertices = [];
+      state.bridges.forEach((bridge, index) => {
+        const a = byId[bridge.from]?.position;
+        const b = byId[bridge.to]?.position;
+        if (!a || !b) return;
+        const p = bridgePoint(a, b, 0.52, index);
+        vertices.push(p[0], p[1], p[2], 1.0, 0.82, 0.28);
+      });
+      drawArray(pointProgram, pointBuffer, vertices, gl.POINTS, vp, 240);
+    }
+
+    function drawShip(vp, ship) {
+      if (!state) return;
+      const p = ship.position;
+      const vertices = [
+        p[0], p[1], p[2], 0.55, 1.0, 0.95,
+        p[0] + 0.18, p[1] - 0.18, p[2] - 0.18, 0.25, 0.65, 1.0,
+        p[0] - 0.18, p[1] - 0.18, p[2] - 0.18, 0.25, 0.65, 1.0
+      ];
+      drawArray(pointProgram, pointBuffer, vertices, gl.POINTS, vp, shipMode ? 300 : 160);
+    }
+
     function drawCage(vp) {
       const vertices = [];
       for (let ring = -4; ring <= 4; ring += 1) {
@@ -162,6 +221,69 @@
         }
       }
       drawArray(lineProgram, lineBuffer, vertices, gl.LINE_STRIP, vp, 1);
+    }
+
+    function shipState() {
+      if (!state?.bridges?.length) return { position: [0, 0, 0], eye: [0, 2, 12], target: [0, 0, 0], bridge: null };
+      const bridge = state.bridges[routeIndex % state.bridges.length];
+      const byId = Object.fromEntries(state.worlds.map((world) => [world.id, world]));
+      const a = byId[bridge.from]?.position || [0, 0, 0];
+      const b = byId[bridge.to]?.position || [0, 0, 0];
+      const p = bridgePoint(a, b, routeT, routeIndex);
+      const q = bridgePoint(a, b, Math.min(1, routeT + 0.04), routeIndex);
+      const dir = normalize([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);
+      return {
+        position: p,
+        eye: [p[0] - dir[0] * 1.8, p[1] + 0.75, p[2] - dir[2] * 1.8],
+        target: [p[0] + dir[0] * 3.2, p[1] + dir[1] * 1.2, p[2] + dir[2] * 3.2],
+        bridge
+      };
+    }
+
+    function bridgePoint(a, b, u, index) {
+      const lift = Math.sin(u * Math.PI) * (2.2 + index * 0.7);
+      const swirl = Math.sin(time * 3 + u * Math.PI * 6 + index) * 0.35;
+      return [
+        lerp(a[0], b[0], u) + swirl,
+        lerp(a[1], b[1], u) + lift,
+        lerp(a[2], b[2], u) + Math.cos(time * 2 + u * 8 + index) * 0.35
+      ];
+    }
+
+    function updateLabels(vp, ship) {
+      if (!state) return;
+      const nodes = state.worlds.map((world) => ({ text: `${world.id} · ${world.carrier}`, pos: world.position, cls: "label" }));
+      const byId = Object.fromEntries(state.worlds.map((world) => [world.id, world]));
+      state.bridges.forEach((bridge, index) => {
+        const a = byId[bridge.from]?.position;
+        const b = byId[bridge.to]?.position;
+        if (a && b) nodes.push({ text: `${bridge.from}->${bridge.to}  r=${bridge.recognition.toFixed(2)}  rem=${bridge.active_remainder.toFixed(2)}`, pos: bridgePoint(a, b, 0.5, index), cls: "label bridge" });
+      });
+      nodes.push({ text: shipMode ? "NAV SHIP" : "ship preview", pos: ship.position, cls: "label bridge" });
+      labels.innerHTML = nodes.map((node) => {
+        const p = project(node.pos, vp);
+        if (!p.visible) return "";
+        return `<div class="${node.cls}" style="left:${p.x}px;top:${p.y}px">${node.text}</div>`;
+      }).join("");
+    }
+
+    function project(pos, mvp) {
+      const x = pos[0], y = pos[1], z = pos[2];
+      const w = mvp[3] * x + mvp[7] * y + mvp[11] * z + mvp[15];
+      if (w <= 0.05) return { visible: false };
+      const nx = (mvp[0] * x + mvp[4] * y + mvp[8] * z + mvp[12]) / w;
+      const ny = (mvp[1] * x + mvp[5] * y + mvp[9] * z + mvp[13]) / w;
+      return { visible: Math.abs(nx) < 1.3 && Math.abs(ny) < 1.3, x: (nx * 0.5 + 0.5) * innerWidth, y: (-ny * 0.5 + 0.5) * innerHeight };
+    }
+
+    function updateInfo() {
+      const ship = shipState();
+      document.getElementById("shipMode").textContent = shipMode ? "inside network" : "orbit camera";
+      document.getElementById("ship").classList.toggle("active", shipMode);
+      if (ship.bridge) {
+        document.getElementById("bridgeReadout").textContent = `${ship.bridge.from} -> ${ship.bridge.to}  recog ${ship.bridge.recognition.toFixed(2)} / reson ${ship.bridge.resonance.toFixed(2)}`;
+        document.getElementById("translation").textContent = ship.bridge.translation.replaceAll("_", " ");
+      }
     }
 
     function drawArray(activeProgram, buffer, vertices, mode, mvp, pointScale) {
@@ -208,12 +330,17 @@
       }
       if (event.key.toLowerCase() === "r") {
         focus = [0, 0, 0]; distance = 15; yaw = 0.7; pitch = -0.28;
-        document.getElementById("focus").textContent = "free orbit";
+        document.getElementById("focus").textContent = shipMode ? "inside route" : "free orbit";
       }
+      if (event.key.toLowerCase() === "n") { shipMode = !shipMode; updateInfo(); }
+      if (event.code === "Space") { routeIndex = (routeIndex + 1) % (state?.bridges?.length || 1); routeT = 0; updateInfo(); }
     });
+    document.getElementById("ship").addEventListener("click", () => { shipMode = !shipMode; updateInfo(); });
+    document.getElementById("next").addEventListener("click", () => { routeIndex = (routeIndex + 1) % (state?.bridges?.length || 1); routeT = 0; updateInfo(); });
     document.getElementById("reset").addEventListener("click", () => {
       focus = [0, 0, 0]; distance = 15; yaw = 0.7; pitch = -0.28;
-      document.getElementById("focus").textContent = "free orbit";
+      document.getElementById("focus").textContent = "inside route";
+      shipMode = true; routeIndex = 0; routeT = 0; updateInfo();
     });
 
     function program(vertexSource, fragmentSource) {

@@ -50,7 +50,22 @@ export function buildV5AaaCosmos() {
       pointer_drag: "orbit",
       wheel: "zoom",
       click_world: "focus",
-      keys: ["1", "2", "3", "4", "r"]
+      navigator_ship: "toggle cockpit route flight with n",
+      keys: ["1", "2", "3", "4", "n", "space", "r"]
+    },
+    navigator_ship: {
+      mode: "inside_network_flight",
+      default_route: ["V1", "V2", "V3", "V1"],
+      purpose: "navigate bridge interiors while preserving human-readable semantic telemetry",
+      readouts: [
+        "current world",
+        "target world",
+        "bridge translation",
+        "recognition",
+        "resonance",
+        "projection violence",
+        "active remainder"
+      ]
     },
     invariants: {
       non_destructive: true,
