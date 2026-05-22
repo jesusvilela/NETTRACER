@@ -67,6 +67,29 @@ export function buildV5AaaCosmos() {
         "active remainder"
       ]
     },
+    sim_levels: [
+      {
+        id: "level-1-ingress-to-cognition",
+        bridge: "V1->V2",
+        title: "Ingress Translation Canyon",
+        experience: "packets become readable cognition traces as the ship crosses the first bridge",
+        landmarks: ["V1 ingress gate", "J->U translation wake", "dominance trace beacon", "projection-violence meter"]
+      },
+      {
+        id: "level-2-cognition-to-object",
+        bridge: "V2->V3",
+        title: "Cognition Atlas Observatory",
+        experience: "telemetry thickens into object identity, labels, mutual recognition, and active remainder",
+        landmarks: ["A_n carrier ring", "repo-cosmos atlas", "Godelian identity shell", "mutual-resonance bridge"]
+      },
+      {
+        id: "level-3-object-to-ingress-return",
+        bridge: "V3->V1",
+        title: "Object Return Fold",
+        experience: "the self-reflective object returns to operational ingress without erasing its higher-dimensional remainder",
+        landmarks: ["bridge discipline core", "active remainder vault", "return translation gate", "V1 compatibility surface"]
+      }
+    ],
     invariants: {
       non_destructive: true,
       all_versions_remain_reachable: true,

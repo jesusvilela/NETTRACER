@@ -15,6 +15,7 @@
     .legend { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(118, 220, 255, .18); color: #d7eef8; font-size: 12px; line-height: 1.45; }
     .label { position: fixed; transform: translate(-50%, -50%); padding: 4px 7px; border-radius: 6px; background: rgba(1, 3, 6, .68); border: 1px solid rgba(141, 231, 255, .35); color: #eefaff; font-size: 11px; font-weight: 800; pointer-events: none; white-space: nowrap; }
     .label.bridge { color: #ffd68a; border-color: rgba(255, 191, 94, .35); font-weight: 700; }
+    .label.landmark { color: #b7ffdc; border-color: rgba(122, 255, 184, .36); }
     .reticle { position: fixed; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border: 1px solid rgba(142, 231, 255, .46); border-radius: 50%; pointer-events: none; box-shadow: 0 0 24px rgba(142, 231, 255, .16); }
     .reticle::before, .reticle::after { content: ""; position: absolute; background: rgba(142, 231, 255, .52); }
     .reticle::before { width: 18px; height: 1px; left: 18px; top: 26px; }
@@ -38,6 +39,8 @@
     <div class="row"><span>ship</span><span class="value" id="shipMode">inside network</span></div>
     <div class="row"><span>bridge</span><span class="value" id="bridgeReadout">none</span></div>
     <div class="row"><span>translation</span><span class="value" id="translation">-</span></div>
+    <div class="row"><span>level</span><span class="value" id="levelTitle">-</span></div>
+    <div class="row"><span>experience</span><span class="value" id="levelExperience">-</span></div>
     <div class="legend" id="legend">Navigator ship starts inside the network. Press N to orbit outside. Space/Next advances bridge. Keys 1-3 focus worlds.</div>
   </section>
   <div id="labels"></div>
@@ -135,6 +138,7 @@
       const vp = multiply(projection, view);
 
       drawCage(vp);
+      drawLevelGeometry(vp);
       drawBridges(vp);
       drawBridgeMarkers(vp);
       drawWorlds(vp);
@@ -208,6 +212,23 @@
       drawArray(pointProgram, pointBuffer, vertices, gl.POINTS, vp, shipMode ? 300 : 160);
     }
 
+    function drawLevelGeometry(vp) {
+      if (!state?.sim_levels?.length) return;
+      const level = state.sim_levels[routeIndex % state.sim_levels.length];
+      const bridge = state.bridges[routeIndex % state.bridges.length];
+      const byId = Object.fromEntries(state.worlds.map((world) => [world.id, world]));
+      const a = byId[bridge.from]?.position || [0, 0, 0];
+      const b = byId[bridge.to]?.position || [0, 0, 0];
+      const vertices = [];
+      level.landmarks.forEach((name, index) => {
+        const u = (index + 1) / (level.landmarks.length + 1);
+        const p = bridgePoint(a, b, u, routeIndex);
+        const side = index % 2 === 0 ? 1 : -1;
+        vertices.push(p[0] + side * 0.8, p[1] + 0.35 + index * 0.1, p[2] - side * 0.55, 0.42, 1.0, 0.68);
+      });
+      drawArray(pointProgram, pointBuffer, vertices, gl.POINTS, vp, 210);
+    }
+
     function drawCage(vp) {
       const vertices = [];
       for (let ring = -4; ring <= 4; ring += 1) {
@@ -260,6 +281,17 @@
         if (a && b) nodes.push({ text: `${bridge.from}->${bridge.to}  r=${bridge.recognition.toFixed(2)}  rem=${bridge.active_remainder.toFixed(2)}`, pos: bridgePoint(a, b, 0.5, index), cls: "label bridge" });
       });
       nodes.push({ text: shipMode ? "NAV SHIP" : "ship preview", pos: ship.position, cls: "label bridge" });
+      const level = state.sim_levels?.[routeIndex % (state.sim_levels?.length || 1)];
+      if (level) {
+        const bridge = state.bridges[routeIndex % state.bridges.length];
+        const a = byId[bridge.from]?.position || [0, 0, 0];
+        const b = byId[bridge.to]?.position || [0, 0, 0];
+        level.landmarks.forEach((name, index) => {
+          const p = bridgePoint(a, b, (index + 1) / (level.landmarks.length + 1), routeIndex);
+          const side = index % 2 === 0 ? 1 : -1;
+          nodes.push({ text: name, pos: [p[0] + side * 0.8, p[1] + 0.35 + index * 0.1, p[2] - side * 0.55], cls: "label landmark" });
+        });
+      }
       labels.innerHTML = nodes.map((node) => {
         const p = project(node.pos, vp);
         if (!p.visible) return "";
@@ -283,6 +315,11 @@
       if (ship.bridge) {
         document.getElementById("bridgeReadout").textContent = `${ship.bridge.from} -> ${ship.bridge.to}  recog ${ship.bridge.recognition.toFixed(2)} / reson ${ship.bridge.resonance.toFixed(2)}`;
         document.getElementById("translation").textContent = ship.bridge.translation.replaceAll("_", " ");
+      }
+      const level = state?.sim_levels?.[routeIndex % (state?.sim_levels?.length || 1)];
+      if (level) {
+        document.getElementById("levelTitle").textContent = level.title;
+        document.getElementById("levelExperience").textContent = level.experience;
       }
     }
 
