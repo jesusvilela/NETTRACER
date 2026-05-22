@@ -157,7 +157,10 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/api/v5/aaa-cosmos") {
-        return sendJson(response, 200, buildV5AaaCosmos());
+        return sendJson(response, 200, buildV5AaaCosmos({
+          traffic: traceStore.getTraffic(),
+          topology: controlPlane.getTopology()
+        }));
       }
 
       if (request.method === "GET" && url.pathname === "/api/telos/manifest") {

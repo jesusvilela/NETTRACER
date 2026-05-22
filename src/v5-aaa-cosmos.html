@@ -41,6 +41,9 @@
     <div class="row"><span>translation</span><span class="value" id="translation">-</span></div>
     <div class="row"><span>level</span><span class="value" id="levelTitle">-</span></div>
     <div class="row"><span>experience</span><span class="value" id="levelExperience">-</span></div>
+    <div class="row"><span>dominant</span><span class="value" id="dominantCarrier">-</span></div>
+    <div class="row"><span>lab traffic</span><span class="value" id="labTraffic">-</span></div>
+    <div class="row"><span>seed</span><span class="value" id="seedObject">-</span></div>
     <div class="legend" id="legend">Navigator ship starts inside the network. Press N to orbit outside. Space/Next advances bridge. Keys 1-3 focus worlds.</div>
   </section>
   <div id="labels"></div>
@@ -140,6 +143,7 @@
       drawCage(vp);
       drawLevelGeometry(vp);
       drawBridges(vp);
+      drawTrafficPulses(vp);
       drawBridgeMarkers(vp);
       drawWorlds(vp);
       drawShip(vp, ship);
@@ -199,6 +203,23 @@
         vertices.push(p[0], p[1], p[2], 1.0, 0.82, 0.28);
       });
       drawArray(pointProgram, pointBuffer, vertices, gl.POINTS, vp, 240);
+    }
+
+    function drawTrafficPulses(vp) {
+      if (!state?.lab_traffic?.pulses?.length) return;
+      const byId = Object.fromEntries(state.worlds.map((world) => [world.id, world]));
+      const vertices = [];
+      state.lab_traffic.pulses.forEach((pulse, index) => {
+        const bridge = bridgeForRoute(pulse.route);
+        const a = byId[bridge.from]?.position;
+        const b = byId[bridge.to]?.position;
+        if (!a || !b) return;
+        const u = (time * 0.18 + index * 0.09) % 1;
+        const p = bridgePoint(a, b, u, index % 3);
+        const color = carrierColor(pulse.carrier);
+        vertices.push(p[0], p[1] + 0.22, p[2], color[0], color[1], color[2]);
+      });
+      drawArray(pointProgram, pointBuffer, vertices, gl.POINTS, vp, 190);
     }
 
     function drawShip(vp, ship) {
@@ -292,6 +313,16 @@
           nodes.push({ text: name, pos: [p[0] + side * 0.8, p[1] + 0.35 + index * 0.1, p[2] - side * 0.55], cls: "label landmark" });
         });
       }
+      if (state.lab_traffic?.pulses?.length) {
+        state.lab_traffic.pulses.slice(-6).forEach((pulse, index) => {
+          const bridge = bridgeForRoute(pulse.route);
+          const a = byId[bridge.from]?.position;
+          const b = byId[bridge.to]?.position;
+          if (!a || !b) return;
+          const p = bridgePoint(a, b, (time * 0.18 + index * 0.09) % 1, index % 3);
+          nodes.push({ text: `${pulse.carrier} traffic ${pulse.direction}`, pos: [p[0], p[1] + 0.55, p[2]], cls: "label bridge" });
+        });
+      }
       labels.innerHTML = nodes.map((node) => {
         const p = project(node.pos, vp);
         if (!p.visible) return "";
@@ -320,6 +351,15 @@
       if (level) {
         document.getElementById("levelTitle").textContent = level.title;
         document.getElementById("levelExperience").textContent = level.experience;
+      }
+      if (state?.cognition_ascent) {
+        document.getElementById("dominantCarrier").textContent = `${state.cognition_ascent.current_dominant_carrier} · ${state.cognition_ascent.progress_signal}`;
+      }
+      if (state?.lab_traffic) {
+        document.getElementById("labTraffic").textContent = `${state.lab_traffic.traffic_count} events · ${state.lab_traffic.topology_nodes} nodes · ${state.lab_traffic.topology_edges} edges`;
+      }
+      if (state?.seed_object) {
+        document.getElementById("seedObject").textContent = state.seed_object.id;
       }
     }
 
@@ -396,6 +436,16 @@
       return s;
     }
     function lerp(a, b, u) { return a + (b - a) * u; }
+    function bridgeForRoute(route) {
+      const [from, to] = String(route || "V1->V2").split("->");
+      return state.bridges.find((bridge) => bridge.from === from && bridge.to === to) || state.bridges[0];
+    }
+    function carrierColor(carrier) {
+      if (carrier === "C") return [0.42, 1.0, 0.86];
+      if (carrier === "O") return [1.0, 0.62, 0.26];
+      if (carrier === "A_n") return [0.78, 0.55, 1.0];
+      return [0.9, 0.95, 1.0];
+    }
     function perspective(fovy, aspect, near, far) {
       const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
       return [f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,(2*far*near)*nf,0];
@@ -416,6 +466,7 @@
     function normalize(v){ const l=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/l,v[1]/l,v[2]/l]; }
 
     load();
+    setInterval(load, 2500);
     render();
   </script>
 </body>

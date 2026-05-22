@@ -1,5 +1,5 @@
 {
-  "task": "V5 first-person sim levels",
+  "task": "V5 representational cognition and lab traffic layer",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
@@ -11,8 +11,8 @@
     "focused_test": "node --test test\\v5-aaa-cosmos.test.js",
     "full_test": "npm test",
     "full_test_result": "46 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v5/aaa-cosmos exposes 3 sim_levels",
-    "page_smoke": "http://127.0.0.1:8790/v5/aaa-cosmos contains levelTitle, levelExperience, landmark",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v5-aaa-cosmos-sim-levels.png"
+    "api_smoke": "http://127.0.0.1:8790/api/v5/aaa-cosmos exposes cognition_ascent, seed_object, and lab_traffic",
+    "page_smoke": "http://127.0.0.1:8790/v5/aaa-cosmos contains dominantCarrier, labTraffic, seedObject, and drawTrafficPulses",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v5-representational-traffic-level.png"
   }
 }
