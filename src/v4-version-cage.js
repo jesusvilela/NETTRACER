@@ -71,6 +71,25 @@ export function buildV4VersionCage() {
       bridges_are_crossable_not_absorptive: true,
       active_remainder_preserved: projectionViolence < 0.34
     },
+    aaa_projection: {
+      mode: "gpu_webgl_3d_human_4d_projection",
+      target_gpu: "NVIDIA RTX 3060 Ti 8GB class",
+      route: "/v5/aaa-cosmos",
+      endpoint: "/api/v5/aaa-cosmos",
+      visual_contract: "full-bleed WebGL depth scene with navigable worlds, bridge tunnels, hyperbolic cage shells, and shader-based manifold flow"
+    },
+    substrate_codecs: {
+      ramdisk: {
+        repository: "jesusvilela/nnn-hyperbolic-ramdisk_v2",
+        mode: "reference_backend_contract",
+        role: "hyperbolic semantic memory fabric"
+      },
+      slang: {
+        repository: "jesusvilela/-lang.s1",
+        mode: "reference_codec_contract",
+        role: "section-language bridge codec"
+      }
+    },
     launch: {
       infra: "V4",
       port: 8790,
