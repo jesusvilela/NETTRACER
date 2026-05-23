@@ -1,19 +1,19 @@
 {
-  "task": "V8 n-mesh world engine",
+  "task": "V9 network growth cosmos",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
   "latest_verification": {
     "syntax": [
-      "node --check src\\v8-nmesh-world-engine.js",
+      "node --check src\\v9-network-growth-cosmos.js",
       "node --check src\\server.js"
     ],
-    "focused_test": "node --test test\\v8-nmesh-world-engine.test.js",
+    "focused_test": "node --test test\\v9-network-growth-cosmos.test.js",
     "full_test": "npm test",
-    "full_test_result": "49 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v8/nmesh-world-engine?n=6 exposes 6 meshes, 60 nodes, 48 mesh relations, 18 cross bridges",
-    "page_smoke": "http://127.0.0.1:8790/v8/nmesh-world-engine renders n-mesh WebGL world engine",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v8-nmesh-world-engine.png",
+    "full_test_result": "50 passed, 0 failed",
+    "api_smoke": "http://127.0.0.1:8790/api/v9/network-growth-cosmos?n=7 exposes 7 meshes, 34 information seeds, 238 population points, 262 growth links",
+    "page_smoke": "http://127.0.0.1:8790/v9/network-growth-cosmos renders network population growth",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v9-network-growth-cosmos.png",
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",
@@ -22,7 +22,8 @@
       "http://127.0.0.1:8790/v5/aaa-cosmos",
       "http://127.0.0.1:8790/v6/hypercomplex-world",
       "http://127.0.0.1:8790/v7/informational-cosmos-graph",
-      "http://127.0.0.1:8790/v8/nmesh-world-engine"
+      "http://127.0.0.1:8790/v8/nmesh-world-engine",
+      "http://127.0.0.1:8790/v9/network-growth-cosmos"
     ]
   }
 }

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRACER V9 Network Growth Cosmos</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #010308; color: #f2fbff; font-family: Inter, Segoe UI, sans-serif; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .hud { position: fixed; top: 18px; left: 18px; width: min(610px, calc(100vw - 36px)); padding: 14px 16px; border: 1px solid rgba(135,230,255,.32); border-radius: 8px; background: rgba(1,4,9,.72); backdrop-filter: blur(14px); pointer-events: none; }
+    .title { font-size: 15px; font-weight: 850; margin-bottom: 9px; }
+    .row { display: flex; justify-content: space-between; gap: 14px; color: #bed2dd; font-size: 12px; line-height: 1.55; }
+    .value { color: #fff; text-align: right; }
+    .legend { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(135,230,255,.18); color: #dceff7; font-size: 12px; line-height: 1.45; }
+    .label { position: fixed; transform: translate(-50%, -50%); padding: 4px 7px; border-radius: 6px; background: rgba(1,5,10,.72); border: 1px solid rgba(148,236,255,.34); color: #f4fcff; font-size: 11px; font-weight: 850; pointer-events: none; white-space: nowrap; }
+    .label.growth { color: #b8ffd7; border-color: rgba(122,255,184,.38); }
+    .dock { position: fixed; right: 18px; bottom: 18px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .dock a, .dock button { border: 0; border-radius: 8px; padding: 9px 11px; color: #031019; background: #8ee7ff; font-weight: 850; font-size: 12px; text-decoration: none; }
+    .dock button.active { background: #ffc45d; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <section class="hud">
+    <div class="title">V9 Network Growth Cosmos</div>
+    <div class="row"><span>mode</span><span class="value" id="mode">loading</span></div>
+    <div class="row"><span>meshes</span><span class="value" id="meshes">0</span></div>
+    <div class="row"><span>info seeds</span><span class="value" id="seeds">0</span></div>
+    <div class="row"><span>population</span><span class="value" id="population">0</span></div>
+    <div class="row"><span>growth links</span><span class="value" id="links">0</span></div>
+    <div class="row"><span>axes</span><span class="value" id="axes">360 / 360 / ortho</span></div>
+    <div class="row"><span>meaning</span><span class="value" id="meaning">-</span></div>
+    <div class="legend">Network information populates all worlds. Drag to orbit, wheel to zoom. N+/N- changes mesh count. Space toggles labels.</div>
+  </section>
+  <div id="labels"></div>
+  <nav class="dock">
+    <a href="/v8/nmesh-world-engine">V8</a>
+    <a href="/v7/informational-cosmos-graph">V7</a>
+    <button id="minus">N-</button>
+    <button id="plus">N+</button>
+    <button id="labelsButton" class="active">Labels</button>
+    <button id="reset">Reset</button>
+  </nav>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: true, alpha: false, depth: true });
+    if (!gl) document.body.innerHTML = "<p>WebGL unavailable.</p>";
+    const labels = document.getElementById("labels");
+    let state = null, n = 7, time = 0, yaw = 0.7, pitch = -0.32, distance = 62, dragging = false, lx = 0, ly = 0, showLabels = true;
+    const vs = `
+      attribute vec3 position; attribute vec3 color;
+      uniform mat4 mvp; uniform float pointScale;
+      varying vec3 vColor;
+      void main(){ vColor=color; gl_Position=mvp*vec4(position,1.0); gl_PointSize=pointScale/max(.2,gl_Position.w); }
+    `;
+    const fsPoint = `
+      precision mediump float; varying vec3 vColor;
+      void main(){ vec2 p=gl_PointCoord*2.0-1.0; float d=dot(p,p); if(d>1.0) discard; float g=1.0-smoothstep(.04,1.0,d); gl_FragColor=vec4(vColor*(.45+g*1.65),1.0); }
+    `;
+    const fsLine = `precision mediump float; varying vec3 vColor; void main(){ gl_FragColor=vec4(vColor,1.0); }`;
+    const pointProgram = program(vs, fsPoint), lineProgram = program(vs, fsLine);
+    const pointBuffer = gl.createBuffer(), lineBuffer = gl.createBuffer();
+
+    async function load() {
+      const response = await fetch(`/api/v9/network-growth-cosmos?n=${n}`, { cache: "no-store" });
+      state = await response.json();
+      document.getElementById("mode").textContent = state.mode.replaceAll("_", " ");
+      document.getElementById("meshes").textContent = state.growth_engine.mesh_count;
+      document.getElementById("seeds").textContent = state.growth_engine.information_seed_count;
+      document.getElementById("population").textContent = state.growth_engine.population_count;
+      document.getElementById("links").textContent = state.growth_engine.growth_link_count;
+      document.getElementById("meaning").textContent = state.spectator_semantics.understanding_rule;
+    }
+
+    function frame() {
+      resize(); time += 0.016;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.clearColor(0.002, 0.009, 0.02, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      const projection = perspective(58 * Math.PI / 180, canvas.width / Math.max(1, canvas.height), .08, 260);
+      const eye = [Math.cos(yaw)*Math.cos(pitch)*distance, Math.sin(pitch)*distance + 8, Math.sin(yaw)*Math.cos(pitch)*distance];
+      const vp = multiply(projection, lookAt(eye, [0, 1.5, 0], [0, 1, 0]));
+      drawMeshShells(vp); drawGrowthLinks(vp); drawPopulation(vp); drawOrthoLanes(vp); updateLabels(vp);
+      requestAnimationFrame(frame);
+    }
+
+    function drawMeshShells(vp) {
+      if (!state) return;
+      const v = [];
+      state.meshes.forEach((mesh, mi) => {
+        const o = mesh.offset;
+        for (let lane = 0; lane < 7; lane++) {
+          const r = 3.4 + lane * .85;
+          for (let i = 0; i <= 96; i++) {
+            const a = i / 96 * Math.PI * 2;
+            v.push(o[0] + Math.cos(a + time*.04 + mesh.phase)*r, o[1] + (lane - 3)*.35 + Math.sin(a*2+time)*.12, o[2] + Math.sin(a - time*.035)*r, .06, .45 + lane*.06, 1);
+          }
+        }
+      });
+      draw(lineProgram, lineBuffer, v, gl.LINE_STRIP, vp, 1);
+    }
+
+    function drawPopulation(vp) {
+      if (!state) return;
+      const v = [];
+      state.population.forEach((item, index) => {
+        const p = animated(item.position, index, item.energy);
+        const c = carrierColor(item.carrier);
+        v.push(p[0], p[1], p[2], c[0], c[1], c[2]);
+      });
+      draw(pointProgram, pointBuffer, v, gl.POINTS, vp, 110);
+    }
+
+    function drawGrowthLinks(vp) {
+      if (!state) return;
+      const population = Object.fromEntries(state.population.map((item, index) => [item.id, animated(item.position, index, item.energy)]));
+      const meshNodes = {};
+      state.meshes.forEach((mesh, mi) => mesh.nodes.forEach((node, ni) => { meshNodes[node.id] = animated(node.position, mi * 100 + ni, node.energy); }));
+      const v = [];
+      state.growth_links.forEach((link, index) => {
+        const a = meshNodes[link.from] || population[link.from];
+        const b = population[link.to] || meshNodes[link.to];
+        if (!a || !b) return;
+        const c = carrierColor(link.carrier);
+        pushCurve(v, a, b, link.strength, index, c);
+      });
+      draw(lineProgram, lineBuffer, v, gl.LINE_STRIP, vp, 1);
+    }
+
+    function drawOrthoLanes(vp) {
+      if (!state) return;
+      const v = [];
+      state.meshes.forEach((mesh) => {
+        for (let lane = 0; lane < 7; lane++) {
+          const y = mesh.offset[1] + (lane - 3) * .55;
+          v.push(mesh.offset[0] - 4.8, y, mesh.offset[2], .22, .85, .95, mesh.offset[0] + 4.8, y, mesh.offset[2], .22, .85, .95);
+        }
+      });
+      draw(lineProgram, lineBuffer, v, gl.LINES, vp, 1);
+    }
+
+    function updateLabels(vp) {
+      if (!state || !showLabels) { labels.innerHTML = ""; return; }
+      const items = [];
+      state.meshes.forEach((mesh) => items.push({ text: mesh.id, pos: mesh.offset, cls: "label" }));
+      state.population.filter((item, index) => index % Math.max(1, Math.floor(state.population.length / 28)) === 0).slice(0, 32).forEach((item, index) => {
+        items.push({ text: `${item.label} · ${item.carrier}`, pos: animated(item.position, index, item.energy), cls: "label growth" });
+      });
+      labels.innerHTML = items.map((item) => {
+        const p = project(item.pos, vp);
+        return p.visible ? `<div class="${item.cls}" style="left:${p.x}px;top:${p.y}px">${item.text}</div>` : "";
+      }).join("");
+    }
+
+    function pushCurve(out, a, b, strength, index, color) {
+      for (let step = 0; step < 18; step++) {
+        const u = step / 17;
+        const lift = Math.sin(u * Math.PI) * (0.7 + strength * 1.8);
+        const swirl = Math.sin(time*1.5 + u*10 + index) * .24 * strength;
+        out.push(lerp(a[0], b[0], u) + swirl, lerp(a[1], b[1], u) + lift, lerp(a[2], b[2], u) - swirl, color[0], color[1], color[2]);
+      }
+    }
+    function animated(p, index, energy) {
+      const e = Math.min(4, Math.max(.4, energy || 1));
+      return [p[0] + Math.sin(time*.55 + index*.17)*.08*e, p[1] + Math.cos(time*.45 + index*.13)*.08*e, p[2] + Math.sin(time*.38 + index*.11)*.08*e];
+    }
+    function carrierColor(carrier) {
+      if (carrier === "traffic") return [.95, .95, 1];
+      if (carrier === "C") return [.42, 1, .86];
+      if (carrier === "O") return [1, .58, .24];
+      if (carrier === "A_n") return [.8, .56, 1];
+      if (carrier === "meaning") return [.72, 1, .72];
+      if (carrier === "H") return [.48, .74, 1];
+      return [.83, .93, 1];
+    }
+    function draw(activeProgram, buffer, vertices, mode, mvp, pointScale) {
+      gl.useProgram(activeProgram); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+      const p = gl.getAttribLocation(activeProgram, "position"), c = gl.getAttribLocation(activeProgram, "color");
+      gl.enableVertexAttribArray(p); gl.enableVertexAttribArray(c);
+      gl.vertexAttribPointer(p, 3, gl.FLOAT, false, 24, 0); gl.vertexAttribPointer(c, 3, gl.FLOAT, false, 24, 12);
+      gl.uniformMatrix4fv(gl.getUniformLocation(activeProgram, "mvp"), false, new Float32Array(mvp));
+      const scale = gl.getUniformLocation(activeProgram, "pointScale"); if (scale) gl.uniform1f(scale, pointScale);
+      gl.drawArrays(mode, 0, vertices.length / 6);
+    }
+    function resize(){ const dpr=Math.min(2, devicePixelRatio||1); const w=Math.floor(innerWidth*dpr), h=Math.floor(innerHeight*dpr); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+    function project(p,m){ const w=m[3]*p[0]+m[7]*p[1]+m[11]*p[2]+m[15]; if(w<=.05)return{visible:false}; const x=(m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12])/w, y=(m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13])/w; return{visible:Math.abs(x)<1.25&&Math.abs(y)<1.25,x:(x*.5+.5)*innerWidth,y:(-y*.5+.5)*innerHeight}; }
+    function program(vs,fs){ const p=gl.createProgram(); gl.attachShader(p,shader(gl.VERTEX_SHADER,vs)); gl.attachShader(p,shader(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)); return p; }
+    function shader(t,s){ const h=gl.createShader(t); gl.shaderSource(h,s); gl.compileShader(h); if(!gl.getShaderParameter(h,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(h)); return h; }
+    function perspective(fovy,aspect,near,far){ const f=1/Math.tan(fovy/2), nf=1/(near-far); return [f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,(2*far*near)*nf,0]; }
+    function lookAt(e,c,u){ const z=normalize([e[0]-c[0],e[1]-c[1],e[2]-c[2]]), x=normalize(cross(u,z)), y=cross(z,x); return [x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,e),-dot(y,e),-dot(z,e),1]; }
+    function multiply(a,b){ const o=new Array(16).fill(0); for(let r=0;r<4;r++)for(let c=0;c<4;c++)for(let k=0;k<4;k++)o[c*4+r]+=a[k*4+r]*b[c*4+k]; return o; }
+    function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];} function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+    function normalize(v){ const l=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/l,v[1]/l,v[2]/l]; } function lerp(a,b,u){return a+(b-a)*u;}
+    canvas.addEventListener("pointerdown", e => { dragging = true; lx = e.clientX; ly = e.clientY; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener("pointermove", e => { if(!dragging) return; yaw -= (e.clientX-lx)*.005; pitch = Math.max(-1.2, Math.min(1.2, pitch - (e.clientY-ly)*.005)); lx=e.clientX; ly=e.clientY; });
+    canvas.addEventListener("pointerup", () => dragging = false);
+    canvas.addEventListener("wheel", e => { e.preventDefault(); distance = Math.max(18, Math.min(110, distance + Math.sign(e.deltaY)*2.4)); }, { passive: false });
+    document.getElementById("plus").addEventListener("click", () => { n = Math.min(9, n + 1); load(); });
+    document.getElementById("minus").addEventListener("click", () => { n = Math.max(3, n - 1); load(); });
+    document.getElementById("labelsButton").addEventListener("click", () => { showLabels = !showLabels; document.getElementById("labelsButton").classList.toggle("active", showLabels); });
+    document.getElementById("reset").addEventListener("click", () => { yaw=.7; pitch=-.32; distance=62; });
+    addEventListener("keydown", e => { if(e.code === "Space"){ showLabels = !showLabels; document.getElementById("labelsButton").classList.toggle("active", showLabels); }});
+    load(); setInterval(load, 3000); frame();
+  </script>
+</body>
+</html>

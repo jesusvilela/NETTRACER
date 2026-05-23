@@ -117,3 +117,27 @@ Verification:
 Runtime launch:
 
 - V8: `http://127.0.0.1:8790/v8/nmesh-world-engine`
+
+## 2026-05-23 V9 Network Growth Cosmos
+
+Added V9 as the world-growth layer over V8:
+
+- `/api/v9/network-growth-cosmos?n=<3..9>`: builds information seeds from live topology, live traffic, and world meshes.
+- `/v9/network-growth-cosmos`: WebGL spectator view where information seeds populate every mesh through 360 yaw, 360 pitch, and ortho carrier lanes.
+- Population points are distributed into every world mesh.
+- Growth links connect each mesh seed to populated information points.
+- Observed topology relations are represented as growth relations.
+
+Verification:
+
+- `node --check src\v9-network-growth-cosmos.js`
+- `node --check src\server.js`
+- `node --test test\v9-network-growth-cosmos.test.js`
+- `npm test` => 50 passed, 0 failed
+- API smoke: `n=7` produced 7 meshes, 34 information seeds, 238 population points, 262 growth links, 27 topology nodes
+- Page smoke: V9 view contains population and growth-link renderers
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v9-network-growth-cosmos.png`
+
+Runtime launch:
+
+- V9: `http://127.0.0.1:8790/v9/network-growth-cosmos`
