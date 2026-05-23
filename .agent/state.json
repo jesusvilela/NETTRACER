@@ -1,19 +1,19 @@
 {
-  "task": "V9 network growth cosmos",
+  "task": "V10 sign-stabilized fibers",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
   "latest_verification": {
     "syntax": [
-      "node --check src\\v9-network-growth-cosmos.js",
+      "node --check src\\v10-sign-stabilized-fibers.js",
       "node --check src\\server.js"
     ],
-    "focused_test": "node --test test\\v9-network-growth-cosmos.test.js",
+    "focused_test": "node --test test\\v10-sign-stabilized-fibers.test.js",
     "full_test": "npm test",
-    "full_test_result": "50 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v9/network-growth-cosmos?n=7 exposes 7 meshes, 34 information seeds, 238 population points, 262 growth links",
-    "page_smoke": "http://127.0.0.1:8790/v9/network-growth-cosmos renders network population growth",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v9-network-growth-cosmos.png",
+    "full_test_result": "51 passed, 0 failed",
+    "api_smoke": "http://127.0.0.1:8790/api/v10/sign-stabilized-fibers?n=7 exposes 7 output highways, 126 behavioral fibers, 64 gauge rotations",
+    "page_smoke": "http://127.0.0.1:8790/v10/sign-stabilized-fibers renders two-channel fiber view",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v10-sign-stabilized-fibers.png",
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",
@@ -23,7 +23,8 @@
       "http://127.0.0.1:8790/v6/hypercomplex-world",
       "http://127.0.0.1:8790/v7/informational-cosmos-graph",
       "http://127.0.0.1:8790/v8/nmesh-world-engine",
-      "http://127.0.0.1:8790/v9/network-growth-cosmos"
+      "http://127.0.0.1:8790/v9/network-growth-cosmos",
+      "http://127.0.0.1:8790/v10/sign-stabilized-fibers"
     ]
   }
 }

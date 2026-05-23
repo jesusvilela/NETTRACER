@@ -17,6 +17,7 @@ import { buildV6HypercomplexWorld } from "./v6-hypercomplex-world.js";
 import { buildV7InformationalCosmosGraph } from "./v7-informational-cosmos-graph.js";
 import { buildV8NMeshWorldEngine } from "./v8-nmesh-world-engine.js";
 import { buildV9NetworkGrowthCosmos } from "./v9-network-growth-cosmos.js";
+import { buildV10SignStabilizedFibers } from "./v10-sign-stabilized-fibers.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -191,6 +192,14 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/api/v9/network-growth-cosmos") {
         return sendJson(response, 200, buildV9NetworkGrowthCosmos({
+          traffic: traceStore.getTraffic(),
+          topology: controlPlane.getTopology(),
+          meshCount: url.searchParams.get("n") || 7
+        }));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/v10/sign-stabilized-fibers") {
+        return sendJson(response, 200, buildV10SignStabilizedFibers({
           traffic: traceStore.getTraffic(),
           topology: controlPlane.getTopology(),
           meshCount: url.searchParams.get("n") || 7
@@ -407,6 +416,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/v9/network-growth-cosmos") {
         const filePath = path.resolve("./src/v9-network-growth-cosmos.html");
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          response.writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store, must-revalidate"
+          });
+          response.end(content);
+        } catch (e) {
+          console.error(`[ERR] Failed to serve ${url.pathname}:`, e.message);
+          response.writeHead(404);
+          response.end(`${url.pathname} not found`);
+        }
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v10/sign-stabilized-fibers") {
+        const filePath = path.resolve("./src/v10-sign-stabilized-fibers.html");
         try {
           const content = await fs.promises.readFile(filePath, "utf8");
           response.writeHead(200, {

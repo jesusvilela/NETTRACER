@@ -141,3 +141,33 @@ Verification:
 Runtime launch:
 
 - V9: `http://127.0.0.1:8790/v9/network-growth-cosmos`
+
+## 2026-05-23 V10 Sign-Stabilized Fibers
+
+Added V10 as a two-channel fiber visualization inspired by Zenodo record 20102939:
+
+- Source inspected: `Mathematics is All You Need 2 — Sign-Stabilized Behavioral Fibers in Transformer Residual Streams.`
+- DOI: `10.5281/zenodo.20102939`
+- Used as visual/structural inspiration only: output highway + low-rank near-orthogonal behavioral fibers + sign-stabilized subspace.
+
+Implementation:
+
+- `/api/v10/sign-stabilized-fibers?n=<3..9>`: builds V10 over V9.
+- `/v10/sign-stabilized-fibers`: WebGL view with rank-1 output highways and sign-stabilized behavioral fibers.
+- Output highway: one rank-1 vertical channel per mesh.
+- Behavioral fibers: low-rank signed strands per mesh, using network growth information seeds.
+- Gauge rotations: moving points that preserve the subspace while basis representation changes.
+
+Verification:
+
+- `node --check src\v10-sign-stabilized-fibers.js`
+- `node --check src\server.js`
+- `node --test test\v10-sign-stabilized-fibers.test.js`
+- `npm test` => 51 passed, 0 failed
+- API smoke: `n=7` produced 7 output highways, 126 behavioral fibers, 64 gauge rotations
+- Page smoke: V10 view contains output highway and behavioral fiber renderers
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v10-sign-stabilized-fibers.png`
+
+Runtime launch:
+
+- V10: `http://127.0.0.1:8790/v10/sign-stabilized-fibers`
