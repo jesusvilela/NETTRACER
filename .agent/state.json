@@ -1,19 +1,19 @@
 {
-  "task": "V11 active cognition instrument",
+  "task": "V12 AAA world generator and walker",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
   "latest_verification": {
     "syntax": [
-      "node --check src\\v11-active-cognition-instrument.js",
+      "node --check src\\v12-aaa-world-generator.js",
       "node --check src\\server.js"
     ],
-    "focused_test": "node --test test\\v11-active-cognition-instrument.test.js",
+    "focused_test": "node --test test\\v12-aaa-world-generator.test.js",
     "full_test": "npm test",
-    "full_test_result": "53 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v11/active-cognition-instrument?n=5 exposes selected fiber, live meaning field, event stream, and sign perturbation recompute",
-    "page_smoke": "http://127.0.0.1:8790/v11/active-cognition-instrument returns 200 and renders the active WebGL instrument",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v11-active-cognition-instrument.png",
+    "full_test_result": "54 passed, 0 failed",
+    "api_smoke": "http://127.0.0.1:8790/api/v12/aaa-world-generator?n=7 exposes terrain, life, culture, cosmos towers, walker, and narrator",
+    "page_smoke": "http://127.0.0.1:8790/v12/aaa-world-generator returns 200 and renders the first-person WebGL world",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v12-aaa-world-generator.png",
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",
@@ -25,7 +25,8 @@
       "http://127.0.0.1:8790/v8/nmesh-world-engine",
       "http://127.0.0.1:8790/v9/network-growth-cosmos",
       "http://127.0.0.1:8790/v10/sign-stabilized-fibers",
-      "http://127.0.0.1:8790/v11/active-cognition-instrument"
+      "http://127.0.0.1:8790/v11/active-cognition-instrument",
+      "http://127.0.0.1:8790/v12/aaa-world-generator"
     ]
   }
 }
