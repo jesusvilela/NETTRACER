@@ -93,3 +93,27 @@ Runtime launch:
 - V5: `http://127.0.0.1:8790/v5/aaa-cosmos`
 - V6: `http://127.0.0.1:8790/v6/hypercomplex-world`
 - V7: `http://127.0.0.1:8790/v7/informational-cosmos-graph`
+
+## 2026-05-23 V8 N-Mesh World Engine
+
+Added V8 as an n-mesh constructor over the V7/V6 world engine:
+
+- `/api/v8/nmesh-world-engine?n=<3..9>`: builds phase-shifted world-engine mesh instances.
+- `/v8/nmesh-world-engine`: WebGL spectator view with n-mesh shells, local mesh relationships, and cross-mesh sheaf bridges.
+- Each mesh carries transformed V7 nodes and relationships.
+- Cross-mesh bridges glue homologous seed, spectator, and `A_n` carrier nodes between adjacent meshes.
+- The view exposes N+/N- controls to reconstruct the mesh count live.
+
+Verification:
+
+- `node --check src\v8-nmesh-world-engine.js`
+- `node --check src\server.js`
+- `node --test test\v8-nmesh-world-engine.test.js`
+- `npm test` => 49 passed, 0 failed
+- API smoke: `n=6` produced 6 meshes, 60 mesh nodes, 48 mesh relations, 18 cross bridges
+- Page smoke: V8 view contains n-mesh shell and cross-bridge renderers
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v8-nmesh-world-engine.png`
+
+Runtime launch:
+
+- V8: `http://127.0.0.1:8790/v8/nmesh-world-engine`

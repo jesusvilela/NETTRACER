@@ -1,19 +1,19 @@
 {
-  "task": "V7 informational cosmos graph consolidation",
+  "task": "V8 n-mesh world engine",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
   "latest_verification": {
     "syntax": [
-      "node --check src\\v7-informational-cosmos-graph.js",
+      "node --check src\\v8-nmesh-world-engine.js",
       "node --check src\\server.js"
     ],
-    "focused_test": "node --test test\\v7-informational-cosmos-graph.test.js",
+    "focused_test": "node --test test\\v8-nmesh-world-engine.test.js",
     "full_test": "npm test",
-    "full_test_result": "48 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v7/informational-cosmos-graph exposes graph nodes, relationships, dominant carrier, and lab traffic",
-    "page_smoke": "http://127.0.0.1:8790/v7/informational-cosmos-graph renders spectator WebGL graph",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v7-informational-cosmos-graph.png",
+    "full_test_result": "49 passed, 0 failed",
+    "api_smoke": "http://127.0.0.1:8790/api/v8/nmesh-world-engine?n=6 exposes 6 meshes, 60 nodes, 48 mesh relations, 18 cross bridges",
+    "page_smoke": "http://127.0.0.1:8790/v8/nmesh-world-engine renders n-mesh WebGL world engine",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v8-nmesh-world-engine.png",
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",
@@ -21,7 +21,8 @@
       "http://127.0.0.1:8790/v4/version-cage",
       "http://127.0.0.1:8790/v5/aaa-cosmos",
       "http://127.0.0.1:8790/v6/hypercomplex-world",
-      "http://127.0.0.1:8790/v7/informational-cosmos-graph"
+      "http://127.0.0.1:8790/v7/informational-cosmos-graph",
+      "http://127.0.0.1:8790/v8/nmesh-world-engine"
     ]
   }
 }

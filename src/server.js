@@ -15,6 +15,7 @@ import { buildV4VersionCage } from "./v4-version-cage.js";
 import { buildV5AaaCosmos } from "./v5-aaa-cosmos.js";
 import { buildV6HypercomplexWorld } from "./v6-hypercomplex-world.js";
 import { buildV7InformationalCosmosGraph } from "./v7-informational-cosmos-graph.js";
+import { buildV8NMeshWorldEngine } from "./v8-nmesh-world-engine.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -176,6 +177,14 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         return sendJson(response, 200, buildV7InformationalCosmosGraph({
           traffic: traceStore.getTraffic(),
           topology: controlPlane.getTopology()
+        }));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/v8/nmesh-world-engine") {
+        return sendJson(response, 200, buildV8NMeshWorldEngine({
+          traffic: traceStore.getTraffic(),
+          topology: controlPlane.getTopology(),
+          meshCount: url.searchParams.get("n") || 5
         }));
       }
 
@@ -355,6 +364,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/v7/informational-cosmos-graph") {
         const filePath = path.resolve("./src/v7-informational-cosmos-graph.html");
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          response.writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store, must-revalidate"
+          });
+          response.end(content);
+        } catch (e) {
+          console.error(`[ERR] Failed to serve ${url.pathname}:`, e.message);
+          response.writeHead(404);
+          response.end(`${url.pathname} not found`);
+        }
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v8/nmesh-world-engine") {
+        const filePath = path.resolve("./src/v8-nmesh-world-engine.html");
         try {
           const content = await fs.promises.readFile(filePath, "utf8");
           response.writeHead(200, {
