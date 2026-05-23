@@ -14,6 +14,7 @@ import { buildV3ObjectMesh } from "./v3-object-mesh.js";
 import { buildV4VersionCage } from "./v4-version-cage.js";
 import { buildV5AaaCosmos } from "./v5-aaa-cosmos.js";
 import { buildV6HypercomplexWorld } from "./v6-hypercomplex-world.js";
+import { buildV7InformationalCosmosGraph } from "./v7-informational-cosmos-graph.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -166,6 +167,13 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/api/v6/hypercomplex-world") {
         return sendJson(response, 200, buildV6HypercomplexWorld({
+          traffic: traceStore.getTraffic(),
+          topology: controlPlane.getTopology()
+        }));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/v7/informational-cosmos-graph") {
+        return sendJson(response, 200, buildV7InformationalCosmosGraph({
           traffic: traceStore.getTraffic(),
           topology: controlPlane.getTopology()
         }));
@@ -330,6 +338,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/v6/hypercomplex-world") {
         const filePath = path.resolve("./src/v6-hypercomplex-world.html");
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          response.writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store, must-revalidate"
+          });
+          response.end(content);
+        } catch (e) {
+          console.error(`[ERR] Failed to serve ${url.pathname}:`, e.message);
+          response.writeHead(404);
+          response.end(`${url.pathname} not found`);
+        }
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v7/informational-cosmos-graph") {
+        const filePath = path.resolve("./src/v7-informational-cosmos-graph.html");
         try {
           const content = await fs.promises.readFile(filePath, "utf8");
           response.writeHead(200, {

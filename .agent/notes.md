@@ -64,3 +64,32 @@ Verification:
 - API smoke: `/api/v6/hypercomplex-world` exposes product, 4K target, portals, dominant carrier, and lab traffic
 - Page smoke: `/v6/hypercomplex-world` exposes V6 view and WebGL runtime functions
 - Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v6-hypercomplex-world-4k.png`
+
+## 2026-05-23 V7 Informational Cosmos Graph
+
+Added V7 as the spectator consolidation layer over V6:
+
+- `/api/v7/informational-cosmos-graph`: graph object with typed nodes, relationships, movement fields, spectator semantics, and V6 source state.
+- `/v7/informational-cosmos-graph`: WebGL AAA spectator graph where relationships move, pulse, and label meaning by carrier, bridge, dominance trace, and readability projection.
+- Graph nodes include V1-V3 worlds, R/C/H/O/A_n algebra carriers, seed spinner-hand, and human spectator projection.
+- Graph relationships include bridge portals, dominance-trace ascent, seed-to-spectator readability projection, and live lab traffic edges when observed.
+
+Verification:
+
+- `node --check src\v7-informational-cosmos-graph.js`
+- `node --check src\server.js`
+- `node --test test\v7-informational-cosmos-graph.test.js`
+- `npm test` => 48 passed, 0 failed
+- API smoke: V7 product, 10 nodes, 8 relationships, dominant `A_n`, quiet traffic state
+- Page smoke: all routes V1-V7 returned HTTP 200
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v7-informational-cosmos-graph.png`
+
+Runtime launch:
+
+- V1: `http://127.0.0.1:8787/`
+- V2: `http://127.0.0.1:8788/cognition`
+- V3: `http://127.0.0.1:8789/v3/object-mesh`
+- V4: `http://127.0.0.1:8790/v4/version-cage`
+- V5: `http://127.0.0.1:8790/v5/aaa-cosmos`
+- V6: `http://127.0.0.1:8790/v6/hypercomplex-world`
+- V7: `http://127.0.0.1:8790/v7/informational-cosmos-graph`
