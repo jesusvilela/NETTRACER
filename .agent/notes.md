@@ -171,3 +171,26 @@ Verification:
 Runtime launch:
 
 - V10: `http://127.0.0.1:8790/v10/sign-stabilized-fibers`
+
+## 2026-05-23 V11 Active Cognition Instrument
+
+Added V11 as an agency layer over V10:
+
+- `/api/v11/active-cognition-instrument?n=<3..9>`: builds an interactive state model over sign-stabilized fibers.
+- `/v11/active-cognition-instrument`: WebGL instrument where the spectator can inspect fibers, toggle output highway vs behavioral subspace, rotate gauges, filter carriers, perturb signs, and observe live recompute.
+- The model exposes selected fiber information, source seed, dominant carrier, total/visible cognitive energy, stability index, active remainder, `Phi_cog+`, and a readable event stream.
+- Sign perturbation is non-destructive and request-local; it recomputes the selected fiber sign, stability, remainder, and event stream without mutating stored traffic or topology.
+
+Verification:
+
+- `node --check src\v11-active-cognition-instrument.js`
+- `node --check src\server.js`
+- `node --test test\v11-active-cognition-instrument.test.js`
+- `npm test` => 53 passed, 0 failed
+- API smoke: `n=5` returned selected fiber, live meaning field, event stream, and sign perturbation recompute.
+- Page smoke: V11 view returned HTTP 200.
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v11-active-cognition-instrument.png`
+
+Runtime launch:
+
+- V11: `http://127.0.0.1:8790/v11/active-cognition-instrument`

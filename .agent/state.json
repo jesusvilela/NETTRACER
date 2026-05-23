@@ -1,19 +1,19 @@
 {
-  "task": "V10 sign-stabilized fibers",
+  "task": "V11 active cognition instrument",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
   "latest_verification": {
     "syntax": [
-      "node --check src\\v10-sign-stabilized-fibers.js",
+      "node --check src\\v11-active-cognition-instrument.js",
       "node --check src\\server.js"
     ],
-    "focused_test": "node --test test\\v10-sign-stabilized-fibers.test.js",
+    "focused_test": "node --test test\\v11-active-cognition-instrument.test.js",
     "full_test": "npm test",
-    "full_test_result": "51 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v10/sign-stabilized-fibers?n=7 exposes 7 output highways, 126 behavioral fibers, 64 gauge rotations",
-    "page_smoke": "http://127.0.0.1:8790/v10/sign-stabilized-fibers renders two-channel fiber view",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v10-sign-stabilized-fibers.png",
+    "full_test_result": "53 passed, 0 failed",
+    "api_smoke": "http://127.0.0.1:8790/api/v11/active-cognition-instrument?n=5 exposes selected fiber, live meaning field, event stream, and sign perturbation recompute",
+    "page_smoke": "http://127.0.0.1:8790/v11/active-cognition-instrument returns 200 and renders the active WebGL instrument",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v11-active-cognition-instrument.png",
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",
@@ -24,7 +24,8 @@
       "http://127.0.0.1:8790/v7/informational-cosmos-graph",
       "http://127.0.0.1:8790/v8/nmesh-world-engine",
       "http://127.0.0.1:8790/v9/network-growth-cosmos",
-      "http://127.0.0.1:8790/v10/sign-stabilized-fibers"
+      "http://127.0.0.1:8790/v10/sign-stabilized-fibers",
+      "http://127.0.0.1:8790/v11/active-cognition-instrument"
     ]
   }
 }

@@ -18,6 +18,7 @@ import { buildV7InformationalCosmosGraph } from "./v7-informational-cosmos-graph
 import { buildV8NMeshWorldEngine } from "./v8-nmesh-world-engine.js";
 import { buildV9NetworkGrowthCosmos } from "./v9-network-growth-cosmos.js";
 import { buildV10SignStabilizedFibers } from "./v10-sign-stabilized-fibers.js";
+import { buildV11ActiveCognitionInstrument } from "./v11-active-cognition-instrument.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -203,6 +204,17 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
           traffic: traceStore.getTraffic(),
           topology: controlPlane.getTopology(),
           meshCount: url.searchParams.get("n") || 7
+        }));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/v11/active-cognition-instrument") {
+        return sendJson(response, 200, buildV11ActiveCognitionInstrument({
+          traffic: traceStore.getTraffic(),
+          topology: controlPlane.getTopology(),
+          meshCount: url.searchParams.get("n") || 7,
+          selectedFiberId: url.searchParams.get("fiber"),
+          carrier: url.searchParams.get("carrier") || "all",
+          signPerturbations: parsePerturbations(url.searchParams.get("perturb"))
         }));
       }
 
@@ -433,6 +445,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/v10/sign-stabilized-fibers") {
         const filePath = path.resolve("./src/v10-sign-stabilized-fibers.html");
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          response.writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store, must-revalidate"
+          });
+          response.end(content);
+        } catch (e) {
+          console.error(`[ERR] Failed to serve ${url.pathname}:`, e.message);
+          response.writeHead(404);
+          response.end(`${url.pathname} not found`);
+        }
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v11/active-cognition-instrument") {
+        const filePath = path.resolve("./src/v11-active-cognition-instrument.html");
         try {
           const content = await fs.promises.readFile(filePath, "utf8");
           response.writeHead(200, {
@@ -1259,6 +1288,17 @@ function firstForwardedAddress(value) {
     .split(",")
     .map((item) => item.trim())
     .find(Boolean) || "";
+}
+
+function parsePerturbations(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .reduce((acc, id) => {
+      acc[id] = true;
+      return acc;
+    }, {});
 }
 
 function acceptWebSocket(request, socket, head) {
