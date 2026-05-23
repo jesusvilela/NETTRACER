@@ -75,8 +75,8 @@ export function buildV12AaaWorldGenerator({
 }
 
 function buildTerrain(seed, v11) {
-  const size = 42;
-  const scale = 2.3;
+  const size = 76;
+  const scale = 2.6;
   const points = [];
   const dominant = carrierIndex(v11.meaning_field.dominant_carrier);
   const energy = v11.meaning_field.total_cognitive_energy;
@@ -85,10 +85,11 @@ function buildTerrain(seed, v11) {
     for (let x = 0; x < size; x++) {
       const wx = (x - size / 2) * scale;
       const wz = (z - size / 2) * scale;
-      const ridge = Math.sin(wx * 0.13 + seed * 0.0003) * Math.cos(wz * 0.11 - dominant);
-      const fold = Math.sin((wx + wz) * 0.075 + dominant) * 0.7;
-      const pulse = Math.cos(Math.hypot(wx, wz) * 0.08 - seed * 0.00007) * 1.4;
-      const height = round((ridge * 4.5 + fold * 3.2 + pulse + remainder * 5.5) * (0.82 + dominant * 0.035));
+      const ridge = Math.sin(wx * 0.105 + seed * 0.0003) * Math.cos(wz * 0.095 - dominant);
+      const fold = Math.sin((wx + wz) * 0.055 + dominant) * 0.9;
+      const pulse = Math.cos(Math.hypot(wx, wz) * 0.055 - seed * 0.00007) * 1.8;
+      const canyon = Math.sin(wx * 0.031 + dominant) * Math.sin(wz * 0.044 - seed * 0.00002);
+      const height = round((ridge * 8.8 + fold * 6.7 + pulse * 2.6 + canyon * 7.5 + remainder * 8.5) * (0.92 + dominant * 0.045));
       const heat = clamp(0.48 + ridge * 0.22 + dominant * 0.035, 0, 1);
       const signal = clamp(0.4 + fold * 0.28 + energy * 0.0009, 0, 1);
       const culture = clamp(0.3 + pulse * 0.12 + v11.meaning_field.phi_cog_plus * 0.42, 0, 1);
@@ -108,7 +109,7 @@ function buildTerrain(seed, v11) {
 }
 
 function buildLife(seed, v11, terrain) {
-  const count = Math.min(900, Math.max(140, Math.round(terrain.morphologies * 52 + v11.meaning_field.visible_fibers * 0.8)));
+  const count = Math.min(1800, Math.max(360, Math.round(terrain.morphologies * 78 + v11.meaning_field.visible_fibers * 1.4)));
   const life = [];
   for (let i = 0; i < count; i++) {
     const angle = noise(seed, i, 11) * Math.PI * 2;
@@ -120,7 +121,7 @@ function buildLife(seed, v11, terrain) {
       id: `life:${i}`,
       kind: i % 7 === 0 ? "witness-orb" : i % 5 === 0 ? "culture-spark" : "mantle-grass",
       position: [round(x), round(y + 0.6 + noise(seed, i, 23) * 3.2), round(z)],
-      scale: round(0.4 + noise(seed, i, 29) * 2.8),
+      scale: round(0.6 + noise(seed, i, 29) * 5.8),
       carrier: carrierFromNumber(i + carrierIndex(v11.meaning_field.dominant_carrier)),
       glow: round(0.35 + noise(seed, i, 31) * 0.65)
     });
@@ -134,7 +135,7 @@ function buildLife(seed, v11, terrain) {
 
 function buildCulture(seed, v11, terrain) {
   const nodes = [];
-  const count = 18 + carrierIndex(v11.meaning_field.dominant_carrier) * 2;
+  const count = 34 + carrierIndex(v11.meaning_field.dominant_carrier) * 4;
   for (let i = 0; i < count; i++) {
     const angle = i / count * Math.PI * 2 + seed * 0.0001;
     const radius = 10 + noise(seed, i, 41) * 36;
@@ -154,9 +155,9 @@ function buildCulture(seed, v11, terrain) {
 }
 
 function buildCosmosTowers(seed, v11, terrain) {
-  return v11.behavioral_fibers.slice(0, 48).map((fiber, i) => {
-    const angle = i / 48 * Math.PI * 2 + carrierIndex(fiber.carrier) * 0.33;
-    const radius = 16 + (i % 8) * 5.8;
+  return v11.behavioral_fibers.slice(0, 96).map((fiber, i) => {
+    const angle = i / 96 * Math.PI * 2 + carrierIndex(fiber.carrier) * 0.33;
+    const radius = 22 + (i % 12) * 8.2;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
     return {
@@ -165,7 +166,7 @@ function buildCosmosTowers(seed, v11, terrain) {
       carrier: fiber.carrier,
       sign: fiber.sign,
       position: [round(x), round(sampleHeight(terrain, x, z) + 2), round(z)],
-      height: round(5 + fiber.rank * 2.4 + fiber.stability * 8),
+      height: round(12 + fiber.rank * 4.5 + fiber.stability * 18),
       narrative: `cosmos tower carries ${fiber.carrier} from ${fiber.mesh_id}`
     };
   });

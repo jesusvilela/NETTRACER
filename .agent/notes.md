@@ -217,3 +217,23 @@ Verification:
 Runtime launch:
 
 - V12: `http://127.0.0.1:8790/v12/aaa-world-generator`
+
+## 2026-05-23 V12 Immersive Quality Pass
+
+Responded to the first-person world feeling too flat:
+
+- Fixed movement control mismatch: `Shift` is now handled as lowercase `shift`, matching the key store.
+- Forward/back movement now uses horizontal walking direction unless free camera is enabled.
+- Increased world scale and relief: terrain grid is larger, taller, and more canyon/ridge-driven.
+- Increased density: more life entities, more culture nodes, and more cosmos towers.
+- Added richer visual systems: tower halos, flora/canopy stems, atmosphere rings, weather particles, stronger skyline fiber density, and more varied terrain color.
+- Improved camera start and field of view for a more immersive horizon.
+
+Verification:
+
+- `node --check src\v12-aaa-world-generator.js`
+- `node --check src\server.js`
+- `node --test test\v12-aaa-world-generator.test.js`
+- `npm test` => 54 passed, 0 failed
+- Page smoke: V12 view returned HTTP 200.
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v12-aaa-world-generator-quality-pass.png`

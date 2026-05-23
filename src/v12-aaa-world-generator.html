@@ -7,10 +7,10 @@
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #020507; color: #f3fbff; font-family: Inter, Segoe UI, sans-serif; }
     canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
-    .panel { position: fixed; z-index: 4; border: 1px solid rgba(147,236,255,.28); border-radius: 0; background: linear-gradient(180deg, rgba(5,17,17,.78), rgba(4,8,12,.58)); backdrop-filter: blur(12px); box-shadow: 0 18px 70px rgba(0,0,0,.38); }
+    .panel { position: fixed; z-index: 4; border: 1px solid rgba(147,236,255,.22); border-radius: 0; background: linear-gradient(180deg, rgba(5,17,17,.64), rgba(4,8,12,.42)); backdrop-filter: blur(10px); box-shadow: 0 18px 70px rgba(0,0,0,.28); }
     .essence { top: 26px; left: 26px; width: min(620px, calc(100vw - 52px)); padding: 22px 26px; }
     .stats { position: fixed; z-index: 5; top: 26px; right: 26px; display: grid; grid-template-columns: repeat(2, minmax(160px, 1fr)); gap: 10px; width: min(390px, calc(100vw - 52px)); background: transparent; border: 0; box-shadow: none; }
-    .stat { padding: 16px 18px; border: 1px solid rgba(147,236,255,.25); background: rgba(4,13,14,.72); }
+    .stat { padding: 16px 18px; border: 1px solid rgba(147,236,255,.22); background: rgba(4,13,14,.54); }
     .narrator { left: 26px; bottom: 26px; width: min(900px, calc(100vw - 52px)); padding: 18px 22px; }
     .kicker { color: #9df6ff; font-size: 11px; font-weight: 900; letter-spacing: .04em; margin-bottom: 10px; text-transform: uppercase; }
     h1 { font-size: 19px; line-height: 1.22; margin: 0 0 12px; max-width: 540px; }
@@ -18,7 +18,7 @@
     .metric-label { color: #a6bdc0; font-size: 11px; font-weight: 800; text-transform: uppercase; }
     .metric-value { color: #fff; font-size: 25px; font-weight: 950; margin-top: 8px; }
     .dock { position: fixed; z-index: 6; right: 26px; bottom: 26px; display: grid; grid-template-columns: repeat(2, 92px); gap: 10px; }
-    .dock button, .dock a { border: 1px solid rgba(160,255,230,.22); color: #eafff7; background: rgba(24,57,45,.72); padding: 13px 10px; font-size: 13px; font-weight: 850; text-align: center; text-decoration: none; cursor: pointer; }
+    .dock button, .dock a { border: 1px solid rgba(160,255,230,.22); color: #eafff7; background: rgba(24,57,45,.64); padding: 13px 10px; font-size: 13px; font-weight: 850; text-align: center; text-decoration: none; cursor: pointer; }
     .dock button.active { background: rgba(112,255,206,.24); border-color: rgba(170,255,222,.52); }
     .hint { margin-top: 12px; color: #d9ede8; font-size: 12px; opacity: .9; }
     .reticle { position: fixed; z-index: 3; left: 50%; top: 50%; width: 18px; height: 18px; border: 1px solid rgba(255,255,255,.58); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; opacity: .72; }
@@ -59,7 +59,7 @@
     if (!gl) document.body.innerHTML = "<p>WebGL unavailable.</p>";
     let world = null, time = 0, beat = 0, freeCamera = false;
     const keys = new Set();
-    const player = { pos: [0, 8, 12], yaw: 0, pitch: -0.12, speed: 0.18 };
+    const player = { pos: [0, 12, 18], yaw: -0.18, pitch: -0.2, speed: 0.34, bob: 0 };
     const vs = `
       attribute vec3 position; attribute vec3 color;
       uniform mat4 mvp; uniform float pointScale;
@@ -73,12 +73,12 @@
     `;
     const triProgram = program(vs, fsLine), lineProgram = program(vs, fsLine), pointProgram = program(vs, fsPoint);
     const triBuffer = gl.createBuffer(), lineBuffer = gl.createBuffer(), pointBuffer = gl.createBuffer();
-    let terrainVertices = [], networkVertices = [], lifeVertices = [], towerVertices = [];
+    let terrainVertices = [], networkVertices = [], lifeVertices = [], towerVertices = [], floraVertices = [], haloVertices = [], weatherVertices = [];
 
     async function load() {
       const response = await fetch("/api/v12/aaa-world-generator?n=7", { cache: "no-store" });
       world = await response.json();
-      player.pos = [...world.walker.spawn];
+      player.pos = [world.walker.spawn[0], world.walker.spawn[1] + 5.8, world.walker.spawn[2] + 18];
       buildGeometry();
       updateHud();
     }
@@ -107,21 +107,54 @@
         }
       }
       lifeVertices = [];
+      floraVertices = [];
       for (const e of world.life.entities) {
         const c = colorCarrier(e.carrier, e.glow);
         lifeVertices.push(e.position[0], e.position[1], e.position[2], c[0], c[1], c[2]);
+        if (e.kind !== "mantle-grass" || e.scale > 3.2) {
+          const baseY = sampleHeight(e.position[0], e.position[2]) + 0.15;
+          const topY = e.position[1] + e.scale * 0.9;
+          floraVertices.push(e.position[0], baseY, e.position[2], c[0] * .55, c[1] * .55, c[2] * .55);
+          floraVertices.push(e.position[0], topY, e.position[2], c[0], c[1], c[2]);
+          floraVertices.push(e.position[0] - e.scale * .45, topY - .35, e.position[2], c[0], c[1], c[2]);
+          floraVertices.push(e.position[0] + e.scale * .45, topY + .22, e.position[2], c[0], c[1], c[2]);
+          floraVertices.push(e.position[0], topY, e.position[2] - e.scale * .45, c[0], c[1], c[2]);
+          floraVertices.push(e.position[0], topY + .22, e.position[2] + e.scale * .45, c[0], c[1], c[2]);
+        }
       }
       towerVertices = [];
+      haloVertices = [];
       for (const t of world.cosmos_towers) {
         const c = colorCarrier(t.carrier, 1);
         towerVertices.push(t.position[0], t.position[1], t.position[2], c[0], c[1], c[2]);
         towerVertices.push(t.position[0], t.position[1] + t.height, t.position[2], c[0], c[1], c[2]);
+        pushHalo(haloVertices, t.position[0], t.position[1] + t.height, t.position[2], 2.2 + (t.height % 7), c);
+        if (t.height > 24) {
+          towerVertices.push(t.position[0] - 2, t.position[1] + t.height * .42, t.position[2], c[0] * .7, c[1] * .7, c[2] * .7);
+          towerVertices.push(t.position[0] + 2, t.position[1] + t.height * .55, t.position[2], c[0], c[1], c[2]);
+        }
       }
       networkVertices = [];
       const nodes = [...world.culture.nodes, ...world.cosmos_towers.slice(0, 24)];
       for (let i = 0; i < nodes.length; i++) {
         const a = nodes[i].position, b = nodes[(i * 7 + 3) % nodes.length].position;
         networkVertices.push(a[0], a[1] + 1, a[2], .34, .78, .9, b[0], b[1] + 1, b[2], .8, .42, .72);
+      }
+      weatherVertices = [];
+      for (let i = 0; i < 760; i++) {
+        const x = Math.sin(i * 12.989) * 105 + Math.cos(i * 3.17) * 16;
+        const z = Math.cos(i * 78.233) * 105 + Math.sin(i * 1.91) * 16;
+        const y = 9 + ((i * 37) % 80);
+        const c = colorCarrier(world.generator_geometry.dominant_carrier, 0.6 + (i % 9) * .04);
+        weatherVertices.push(x, y, z, c[0], c[1], c[2]);
+      }
+    }
+
+    function pushHalo(out, x, y, z, radius, color) {
+      const steps = 32;
+      for (let i = 0; i <= steps; i++) {
+        const a = i / steps * Math.PI * 2;
+        out.push(x + Math.cos(a) * radius, y + Math.sin(i * .7) * .4, z + Math.sin(a) * radius, color[0], color[1], color[2]);
       }
     }
 
@@ -134,9 +167,9 @@
 
     function terrainColor(p) {
       return [
-        clamp(.22 + p.heat * .38 + p.culture * .18, 0, 1),
-        clamp(.32 + p.signal * .42, 0, 1),
-        clamp(.38 + p.culture * .46 - p.heat * .1, 0, 1)
+        clamp(.08 + p.heat * .58 + p.culture * .26 + Math.max(0, p.y) * .006, 0, 1),
+        clamp(.18 + p.signal * .62 + p.culture * .15, 0, 1),
+        clamp(.22 + p.culture * .58 - p.heat * .08 + Math.max(0, -p.y) * .008, 0, 1)
       ];
     }
 
@@ -144,20 +177,37 @@
       resize(); time += 0.016; updatePlayer();
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.clearColor(0.006, 0.014, 0.018, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clearColor(0.002, 0.006, 0.011, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       if (!world) return requestAnimationFrame(frame);
       const aspect = canvas.width / Math.max(1, canvas.height);
-      const projection = perspective(64 * Math.PI / 180, aspect, .08, 420);
+      const projection = perspective(72 * Math.PI / 180, aspect, .08, 520);
       const dir = direction();
-      const eye = player.pos;
+      const eye = [player.pos[0], player.pos[1] + Math.sin(player.bob) * .09, player.pos[2]];
       const center = [eye[0] + dir[0], eye[1] + dir[1], eye[2] + dir[2]];
       const vp = multiply(projection, lookAt(eye, center, [0, 1, 0]));
+      drawAtmosphere(vp);
       draw(triProgram, triBuffer, terrainVertices, gl.TRIANGLES, vp, 1);
       draw(lineProgram, lineBuffer, towerVertices, gl.LINES, vp, 1);
+      draw(lineProgram, lineBuffer, haloVertices, gl.LINE_STRIP, vp, 1);
+      draw(lineProgram, lineBuffer, floraVertices, gl.LINES, vp, 1);
       draw(lineProgram, lineBuffer, networkVertices, gl.LINES, vp, 1);
       drawSkyFibers(vp);
       draw(pointProgram, pointBuffer, lifeVertices, gl.POINTS, vp, 125);
+      draw(pointProgram, pointBuffer, movingWeather(), gl.POINTS, vp, 70);
       requestAnimationFrame(frame);
+    }
+
+    function drawAtmosphere(vp) {
+      const v = [];
+      for (let ring = 0; ring < 12; ring++) {
+        const r = 24 + ring * 13;
+        const y = 8 + ring * 4.6;
+        for (let i = 0; i <= 96; i++) {
+          const a = i / 96 * Math.PI * 2 + time * .018 * (ring % 2 ? -1 : 1);
+          v.push(Math.cos(a) * r, y + Math.sin(a * 3 + time) * 1.2, Math.sin(a) * r, .12, .48 + ring * .018, .7 + ring * .012);
+        }
+      }
+      draw(lineProgram, lineBuffer, v, gl.LINE_STRIP, vp, 1);
     }
 
     function drawSkyFibers(vp) {
@@ -176,13 +226,19 @@
     }
 
     function updatePlayer() {
-      const drift = keys.has("Shift") ? 0.46 : player.speed;
-      const dir = direction(), right = [Math.cos(player.yaw), 0, -Math.sin(player.yaw)];
-      if (keys.has("w")) move(dir, drift);
-      if (keys.has("s")) move(dir, -drift);
+      const drift = keys.has("shift") ? 0.82 : player.speed;
+      const look = direction();
+      const walk = freeCamera ? look : norm([look[0], 0, look[2]]);
+      const right = [Math.cos(player.yaw), 0, -Math.sin(player.yaw)];
+      let moved = false;
+      if (keys.has("w")) { move(walk, drift); moved = true; }
+      if (keys.has("s")) { move(walk, -drift); moved = true; }
       if (keys.has("d")) move(right, drift);
       if (keys.has("a")) move(right, -drift);
+      if (freeCamera && keys.has("q")) player.pos[1] -= drift;
+      if (freeCamera && keys.has("e")) player.pos[1] += drift;
       if (!freeCamera && world) player.pos[1] = sampleHeight(player.pos[0], player.pos[2]) + 2.4;
+      if (moved) player.bob += drift * .34;
     }
 
     function move(vec, amount) {
@@ -203,6 +259,19 @@
     function colorCarrier(carrier, glow) {
       const map = { R:[.85,.95,1], C:[.4,1,.9], H:[1,.58,.32], O:[.52,.72,1], A_n:[1,.86,.38], meaning:[.9,.58,1], traffic:[.3,.88,1] };
       return (map[carrier] || [.8,.9,1]).map((v) => clamp(v * glow + .12, 0, 1));
+    }
+
+    function movingWeather() {
+      const v = [];
+      for (let i = 0; i < weatherVertices.length; i += 6) {
+        v.push(
+          weatherVertices[i] + Math.sin(time * .7 + i) * 1.2,
+          weatherVertices[i + 1] + Math.sin(time * 1.4 + i * .1) * 2.4,
+          weatherVertices[i + 2] + Math.cos(time * .6 + i) * 1.2,
+          weatherVertices[i + 3], weatherVertices[i + 4], weatherVertices[i + 5]
+        );
+      }
+      return v;
     }
 
     function draw(prog, buffer, data, mode, mvp, pointScale) {
@@ -231,7 +300,13 @@
     document.getElementById("enter").onclick = () => canvas.requestPointerLock();
     document.getElementById("narrate").onclick = () => { beat++; updateHud(); };
     document.getElementById("camera").onclick = () => { freeCamera = !freeCamera; updateHud(); };
-    window.addEventListener("keydown", (e) => { keys.add(e.key.toLowerCase()); if(e.key.toLowerCase()==="n"){ beat++; updateHud(); } if(e.key.toLowerCase()==="c"){ freeCamera=!freeCamera; updateHud(); } });
+    window.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      if (["w","a","s","d","shift","q","e"," ","arrowup","arrowdown","arrowleft","arrowright"].includes(key)) e.preventDefault();
+      keys.add(key);
+      if(key==="n"){ beat++; updateHud(); }
+      if(key==="c"){ freeCamera=!freeCamera; updateHud(); }
+    });
     window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
     window.addEventListener("mousemove", (e) => {
       if (document.pointerLockElement !== canvas) return;

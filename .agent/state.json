@@ -1,5 +1,5 @@
 {
-  "task": "V12 AAA world generator and walker",
+  "task": "V12 AAA world generator immersive quality pass",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
@@ -11,9 +11,9 @@
     "focused_test": "node --test test\\v12-aaa-world-generator.test.js",
     "full_test": "npm test",
     "full_test_result": "54 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v12/aaa-world-generator?n=7 exposes terrain, life, culture, cosmos towers, walker, and narrator",
-    "page_smoke": "http://127.0.0.1:8790/v12/aaa-world-generator returns 200 and renders the first-person WebGL world",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v12-aaa-world-generator.png",
+    "api_smoke": "http://127.0.0.1:8790/api/v12/aaa-world-generator?n=7 exposes enlarged terrain, denser life, culture, cosmos towers, walker, and narrator",
+    "page_smoke": "http://127.0.0.1:8790/v12/aaa-world-generator returns 200 and renders the richer first-person WebGL world",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v12-aaa-world-generator-quality-pass.png",
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",
