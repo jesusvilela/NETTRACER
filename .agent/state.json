@@ -1,5 +1,5 @@
 {
-  "task": "NetTracer substrate foundation and live traffic capture base",
+  "task": "Bring GitHub/HF architectural source strata into V2 NetTracer cognition architecture",
   "status": "verified-launched",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
@@ -27,6 +27,39 @@
       "circulation": "5 read-only purpose routes over V1-V13; selected archive-memory-loop for V13",
       "telos_field": "stratified ascent R/C/H/O/A_n, total_cognitive_energy invariant, dominance_trace_ascent signal, simulated Godelian patrol beings, virtuous cycles",
       "emergent_quantities": "complexity_profile drives route, being, cycle, particle, traffic-window, archive-ring, pulse, and focus-ring counts; latest smoke emergence=4.428898 produced routes=6 beings=11 cycles=6 particles=531"
+    },
+    "v2_architecture_sources": {
+      "mode": "read-only source manifold inside V2 cognition status and atlas",
+      "telos": "NETTRACER is the telos of net trace in hypercomplex hyperdim V2 architecture",
+      "source_counts": {
+        "github_repos": 20,
+        "hf_models": 3,
+        "total_sources": 23
+      },
+      "included_key_sources": [
+        "github:jesusvilela/NETTRACER",
+        "github:jesusvilela/-lang.s1",
+        "github:jesusvilela/nnn-hyperbolic-ramdisk_v2",
+        "github:jesusvilela/TELOS",
+        "github:jesusvilela/METACOG",
+        "github:jesusvilela/connection_laplacian_lean",
+        "hf:jesusvilela/manifoldgl",
+        "hf:jesusvilela/manifoldgl-cp3000",
+        "hf:jesusvilela/igbundle-qwen2.5-7b-riemannian"
+      ],
+      "policy": "non-destructive; no clone required; no runtime execution; no dependency install",
+      "verification": [
+        "node --check src\\v2-architecture-sources.js",
+        "node --check src\\nnn-bridge.js",
+        "cognition-status inline script parse",
+        "node --test test\\ju-geom-bridge.test.js",
+        "npm test => 57 passed, 0 failed"
+      ],
+      "launch_smoke": {
+        "v2": "http://127.0.0.1:8788/cognition returned 200 with source panel and source orbit renderer",
+        "api": "http://127.0.0.1:8788/api/cognition/status returned 23 sources, 20 GitHub repos, 3 HF models, telos NETTRACER, non_destructive true",
+        "all_vs_sample": "V1 8787, V2 8788, V3 8789, V13 and substrate foundation on 8790 returned 200"
+      }
     },
     "s1_archive_source": {
       "mode": "fallback-readonly",

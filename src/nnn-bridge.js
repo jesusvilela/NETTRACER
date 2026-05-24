@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { join, resolve } from "node:path";
+import { buildV2ArchitectureSources } from "./v2-architecture-sources.js";
 
 
 let nnnProcess = null;
@@ -274,6 +275,7 @@ export function getJuCognitionStatus() {
   const projectionViolence = round(mean(records.map((record) => Number(record?.invariants?.projection_violence))));
   const activeRemainder = round(mean(records.map((record) => Number(record?.invariants?.active_remainder))));
   const perspectiveGain = round(mean(records.map((record) => Number(record?.invariants?.perspective_gain))));
+  const architectureSources = buildV2ArchitectureSources({ records, levels });
   return {
     status: records.length ? "absorbed" : "waiting_for_v1_absorb",
     boot: R40_BOOT,
@@ -302,6 +304,7 @@ export function getJuCognitionStatus() {
       perspective_gain: perspectiveGain,
       kernel_active: activeRemainder > 0
     },
+    architecture_sources: architectureSources,
     levels,
     recent: records.slice(-12).map(toCognitionTraceRecord)
   };
@@ -390,6 +393,7 @@ export function getJuCognitionAtlas() {
       mean: round(meanRecognition),
       threshold: 0.5
     },
+    architecture_sources: buildV2ArchitectureSources({ records, levels: buildCognitionLevels(records) }),
     unresolved_remainder: overlaps.filter((overlap) => !overlap.glues),
     worlds,
     overlaps

@@ -1,5 +1,23 @@
 # Agent Notes
 
+## 2026-05-24 V2 Architecture Source Manifold
+
+Corrected the integration target from the separate substrate foundation back into V2 itself.
+
+- Added `src/v2-architecture-sources.js` as a read-only registry of assessed GitHub repos and Hugging Face models.
+- V2 `/api/cognition/status` and `/api/cognition/atlas` now expose `architecture_sources`.
+- `/cognition` now renders an Architectural Source Manifold panel plus repo/HF source orbits in the R40 motion canvas.
+- Source admission is explicitly non-destructive: no clone required, no runtime execution, no dependency install.
+- Key source strata include `NETTRACER`, `-lang.s1`, `nnn-hyperbolic-ramdisk_v2`, `TELOS`, `METACOG`, `connection_laplacian_lean`, `IGBundle-LLM`, and HF models `manifoldgl`, `manifoldgl-cp3000`, `igbundle-qwen2.5-7b-riemannian`.
+
+Verification:
+
+- `node --check src\v2-architecture-sources.js`
+- `node --check src\nnn-bridge.js`
+- inline script parse check for `src/cognition-status.html`
+- `node --test test\ju-geom-bridge.test.js` => 5 passed, 0 failed
+- `npm test` => 57 passed, 0 failed
+
 ## 2026-05-22 V5 First-Person Sim Levels
 
 Added first-person bridge-generated sim levels to the V5 AAA cosmos view. Each active route now has a human-readable level title, experience description, and landmark labels projected into the ship view:

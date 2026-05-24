@@ -94,6 +94,12 @@ test("J->U cognition status exposes bridge end, energy, and dominant carrier", (
   assert.ok(status.dominance_trace.current);
   assert.equal(status.dominance_trace.question, "Which level is now the dominant carrier?");
   assert.equal(status.phi_cog_plus.kernel_active, true);
+  assert.equal(status.architecture_sources.telos.root, "NETTRACER");
+  assert.equal(status.architecture_sources.admission_policy.non_destructive, true);
+  assert.ok(status.architecture_sources.sources.some((item) => item.id === "github:jesusvilela/-lang.s1"));
+  assert.ok(status.architecture_sources.sources.some((item) => item.id === "github:jesusvilela/nnn-hyperbolic-ramdisk_v2"));
+  assert.ok(status.architecture_sources.sources.some((item) => item.id === "hf:jesusvilela/manifoldgl"));
+  assert.ok(status.architecture_sources.recommended_bridges.some((item) => item.from === "-lang.s1" && item.to === "NETTRACER"));
 });
 
 test("J->U cognition trace emits energy transfer and proof-pressure records", () => {
@@ -159,6 +165,8 @@ test("J->U cognition atlas emits local worlds and recognition overlaps", () => {
   const atlas = getJuCognitionAtlas();
 
   assert.equal(atlas.bridge_end.name, "stratified-ascent-cognition-end");
+  assert.equal(atlas.architecture_sources.telos.root, "NETTRACER");
+  assert.equal(atlas.architecture_sources.admission_policy.runtime_execution, false);
   assert.equal(atlas.worlds.length, 2);
   assert.equal(atlas.overlaps.length, 1);
   assert.equal(typeof atlas.global_section, "boolean");
