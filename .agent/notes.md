@@ -370,3 +370,26 @@ Verification:
 - Restarted V4+ host on `http://127.0.0.1:8790/`
 - Page smoke: `/substrate/foundation?v=V13` returned HTTP 200 and contained `Content Circulation` plus `Telos Field`.
 - API smoke: selected route `archive-memory-loop`, 5 circulation routes, 5 simulated beings, 3 virtuous cycles, invariant `total_cognitive_energy`, dominant carrier `A_n`.
+
+## 2026-05-24 Emergent Complexity Quantities
+
+Removed fixed-feeling quantities from the substrate foundation:
+
+- added `traffic_basis.complexity_profile`
+- route count emerges from archive magnitude, topology magnitude, traffic magnitude, and diversity
+- simulated being count emerges from the same profile
+- virtuous cycle count emerges from the profile
+- visual particle count emerges from the profile
+- recent traffic window scales with observed traffic volume
+- renderer uses the profile for stars, archive rings, topology lattice, pulses, focus rings, and particles
+
+The actual V1-V13 ladder remains fixed because those are real product versions, not generated decorative quantities.
+
+Verification:
+
+- inline script parse check passed with `new Function(script)`
+- `node --check src\substrate-foundation.js`
+- `node --test test\substrate-foundation.test.js` => 1 passed, 0 failed
+- `npm test` => 57 passed, 0 failed
+- Restarted V4+ host on `http://127.0.0.1:8790/`
+- API smoke: emergence `4.428898` produced 6 routes, 11 beings, 6 cycles, 531 particles, 1 live traffic event, and over 143k archive packets.

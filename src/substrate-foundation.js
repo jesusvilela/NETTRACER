@@ -139,9 +139,19 @@ function buildGodelianBeings({ ladder, selectedRoute, basis, dominant }) {
     ["Bridge Patrol", "O", "checks non-collapse across version crossings"],
     ["Spinner Hand", "H", "orients route flow and circulation direction"],
     ["Translator", "C", "keeps content readable during phase shift"],
-    ["Ingress Witness", "R", "anchors claims to captured traffic"]
+    ["Ingress Witness", "R", "anchors claims to captured traffic"],
+    ["Topology Gardener", "O", "cultivates bridge neighborhoods from live nodes"],
+    ["Remainder Keeper", "A_n", "protects what projection cannot exhaust"],
+    ["Gauge Pilot", "H", "rotates local frames without losing route intent"],
+    ["Archive Diver", "A_n", "brings long-memory strata into current circulation"],
+    ["Scope Cartographer", "C", "maps traffic scopes into readable paths"],
+    ["Return Sentinel", "R", "keeps descent to operational control open"]
   ];
-  return archetypes.map(([name, carrier, duty], index) => {
+  const targetCount = Math.max(archetypes.length, basis.complexity_profile?.suggested_beings || archetypes.length);
+  return Array.from({ length: Math.min(targetCount, 48) }, (_, index) => {
+    const [stem, carrier, duty] = archetypes[index % archetypes.length];
+    const generation = Math.floor(index / archetypes.length);
+    const name = generation ? `${stem} ${generation + 1}` : stem;
     const versionId = routePath[index % routePath.length];
     const version = ladder.find((item) => item.id === versionId) || ladder[index % ladder.length];
     const activity = round(clamp01(0.34 + (carrier === dominant ? 0.28 : 0.08) + Number(basis.traffic_events_window || 0) * 0.01 + index * 0.035));
@@ -162,7 +172,7 @@ function buildVirtuousCycles({ selectedRoute, basis, energy }) {
   const path = selectedRoute?.path || [];
   const traffic = Number(basis.traffic_events_window || 0);
   const archive = Number(basis.archive.packet_count || 0);
-  return [
+  const templates = [
     {
       id: "capture-understand-return",
       loop: ["capture", "translate", "analyze", "return"],
@@ -180,8 +190,36 @@ function buildVirtuousCycles({ selectedRoute, basis, energy }) {
       loop: ["patrol", "stabilize", "reseed", "ascend"],
       route: ["V10", "V11", "V4", "V8", "V13"],
       gain: round(clamp01(0.41 + path.length * 0.04))
+    },
+    {
+      id: "scope-diversity-ascent",
+      loop: ["scope", "carrier", "bridge", "higher-view"],
+      route: ["V1", "V5", "V7", "V13"],
+      gain: round(clamp01(0.36 + Number(basis.complexity_profile?.diversity || 1) * 0.045))
+    },
+    {
+      id: "topology-civilization-loop",
+      loop: ["node", "relation", "settlement", "stewardship"],
+      route: ["V4", "V8", "V9", "V11", "V12"],
+      gain: round(clamp01(0.34 + Number(basis.complexity_profile?.topology_magnitude || 1) * 0.055))
+    },
+    {
+      id: "live-patrol-loop",
+      loop: ["live", "patrol", "stabilize", "report"],
+      route: ["V2", "V10", "V11", "V7", "V1"],
+      gain: round(clamp01(0.33 + traffic * 0.018))
     }
   ];
+  const targetCount = Math.max(templates.length, basis.complexity_profile?.suggested_cycles || templates.length);
+  return Array.from({ length: Math.min(targetCount, 20) }, (_, index) => {
+    const template = templates[index % templates.length];
+    if (index < templates.length) return template;
+    return {
+      ...template,
+      id: `${template.id}-${Math.floor(index / templates.length) + 1}`,
+      gain: round(clamp01(template.gain * (0.92 + (index % 5) * 0.025)))
+    };
+  });
 }
 
 function buildCirculation({ ladder, bridges, basis, selected }) {
@@ -190,7 +228,7 @@ function buildCirculation({ ladder, bridges, basis, selected }) {
   const archivePackets = Number(basis.archive.packet_count || 0);
   const topologyLoad = Number(basis.topology_nodes || 0) + Number(basis.topology_edges || 0);
   const dominant = basis.dominance_trace.dominant_carrier;
-  const routes = [
+  const templates = [
     makeRoute({
       id: "capture-to-semantic",
       purpose: "make fresh network content readable",
@@ -232,6 +270,7 @@ function buildCirculation({ ladder, bridges, basis, selected }) {
       byId
     })
   ];
+  const routes = growRoutesFromTemplates({ templates, ladder, basis, dominant });
   const bridgeSet = new Set(bridges.flatMap((bridge) => [bridge.id, bridge.inverse]));
   return {
     operator: "hypercomplex_content_circulation",
@@ -280,6 +319,43 @@ function makeRoute({ id, purpose, path, dominant, load, byId }) {
   };
 }
 
+function growRoutesFromTemplates({ templates, ladder, basis, dominant }) {
+  const targetCount = Math.max(templates.length, basis.complexity_profile?.suggested_routes || templates.length);
+  const routes = [...templates];
+  const carrierGroups = groupVersionsByCarrier(ladder);
+  const byId = new Map(ladder.map((version) => [version.id, version]));
+  let index = 0;
+  while (routes.length < Math.min(targetCount, 24)) {
+    const carrier = ["R", "C", "H", "O", "A_n"][index % 5];
+    const carrierVersions = carrierGroups.get(carrier) || ladder;
+    const anchor = carrierVersions[index % carrierVersions.length] || ladder[index % ladder.length];
+    const step = 2 + (index % 4);
+    const path = [];
+    for (let offset = 0; offset < 4 + (index % 4); offset += 1) {
+      path.push(ladder[(anchor.order - 1 + offset * step) % ladder.length].id);
+    }
+    routes.push(makeRoute({
+      id: `emergent-${carrier.toLowerCase()}-${index + 1}`,
+      purpose: `emergent circulation through ${carrier} carrier neighborhood`,
+      path,
+      dominant,
+      load: Number(basis.complexity_profile?.emergence || 1) * (index + 1),
+      byId
+    }));
+    index += 1;
+  }
+  return routes;
+}
+
+function groupVersionsByCarrier(ladder) {
+  const groups = new Map();
+  for (const version of ladder) {
+    if (!groups.has(version.carrier)) groups.set(version.carrier, []);
+    groups.get(version.carrier).push(version);
+  }
+  return groups;
+}
+
 function selectRoute(routes, basis, selected) {
   const latestScope = basis.latest_event?.scope || "";
   if (/world/i.test(latestScope) || selected.id === "V12") return "semantic-to-world";
@@ -299,16 +375,20 @@ function selectionRule(id) {
 }
 
 function buildTrafficBasis({ traffic, topology, archiveSource }) {
-  const recentTraffic = Array.isArray(traffic) ? traffic.slice(-64) : [];
+  const sourceTraffic = Array.isArray(traffic) ? traffic : [];
+  const recentLimit = Math.max(64, Math.min(512, Math.ceil(Math.sqrt(sourceTraffic.length + 1) * 64)));
+  const recentTraffic = sourceTraffic.slice(-recentLimit);
   const nodes = Array.isArray(topology?.nodes) ? topology.nodes : [];
   const edges = Array.isArray(topology?.edges) ? topology.edges : [];
   const archiveStatus = archiveSource?.archiveStatus || {};
   const byDirection = countBy(recentTraffic, (entry) => String(entry.direction || entry.type || "unknown"));
   const byScope = countBy(recentTraffic, (entry) => inferScope(entry));
   const latest = recentTraffic.at(-1) || null;
+  const complexityProfile = inferComplexityProfile({ recentTraffic, nodes, edges, archiveStatus, byScope, byDirection });
   return {
     source: "current_local_lab_netracer",
     traffic_events_window: recentTraffic.length,
+    complexity_profile: complexityProfile,
     packet_window_supported: true,
     topology_nodes: nodes.length,
     topology_edges: edges.length,
@@ -329,6 +409,26 @@ function buildTrafficBasis({ traffic, topology, archiveSource }) {
       read_only: archiveSource?.source === "fallback-readonly"
     },
     dominance_trace: inferDominanceTrace({ recentTraffic, archiveStatus, nodes, edges })
+  };
+}
+
+function inferComplexityProfile({ recentTraffic, nodes, edges, archiveStatus, byScope, byDirection }) {
+  const archivePackets = Number(archiveStatus?.packetCount || 0);
+  const archiveMagnitude = Math.log10(Math.max(10, archivePackets));
+  const topologyMagnitude = Math.sqrt(nodes.length + edges.length + 1);
+  const trafficMagnitude = Math.sqrt(recentTraffic.length + 1);
+  const diversity = Math.max(1, byScope.length + byDirection.length);
+  const emergence = archiveMagnitude * 0.42 + topologyMagnitude * 0.24 + trafficMagnitude * 0.22 + diversity * 0.18;
+  return {
+    archive_magnitude: round(archiveMagnitude),
+    topology_magnitude: round(topologyMagnitude),
+    traffic_magnitude: round(trafficMagnitude),
+    diversity,
+    emergence: round(emergence),
+    suggested_routes: Math.max(3, Math.min(16, Math.ceil(2 + emergence * 0.8))),
+    suggested_beings: Math.max(4, Math.min(36, Math.ceil(3 + emergence * 1.35))),
+    suggested_cycles: Math.max(3, Math.min(14, Math.ceil(2 + emergence * 0.65))),
+    visual_particles: Math.max(160, Math.min(1800, Math.ceil(120 + emergence * 92 + recentTraffic.length * 3)))
   };
 }
 
