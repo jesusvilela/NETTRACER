@@ -21,6 +21,8 @@
     .readout { position: fixed; right: 18px; top: 18px; width: min(470px, calc(100vw - 36px)); background: rgba(4, 18, 22, .84); border: 1px solid rgba(120, 225, 255, .34); padding: 16px 18px; backdrop-filter: blur(14px); }
     .midleft { position: fixed; left: 18px; top: 342px; width: min(390px, calc(100vw - 36px)); background: rgba(4, 18, 22, .74); border: 1px solid rgba(255, 200, 87, .32); padding: 14px 16px; backdrop-filter: blur(12px); }
     .midright { position: fixed; right: 18px; top: 284px; width: min(470px, calc(100vw - 36px)); background: rgba(4, 18, 22, .72); border: 1px solid rgba(243, 139, 255, .28); padding: 14px 16px; backdrop-filter: blur(12px); }
+    .circulation { position: fixed; left: 18px; bottom: 100px; width: min(560px, calc(100vw - 36px)); background: rgba(4, 18, 22, .72); border: 1px solid rgba(132,232,255,.28); padding: 14px 16px; backdrop-filter: blur(12px); }
+    .telos { position: fixed; right: 18px; bottom: 100px; width: min(520px, calc(100vw - 36px)); background: rgba(4, 18, 22, .72); border: 1px solid rgba(255,200,87,.28); padding: 14px 16px; backdrop-filter: blur(12px); }
     .carrier { display: grid; grid-template-columns: 42px 1fr 74px; gap: 10px; align-items: center; margin: 8px 0; font-size: 13px; }
     .bar { height: 8px; background: rgba(255,255,255,.1); overflow: hidden; }
     .fill { height: 100%; background: linear-gradient(90deg, #84e8ff, #ffc857); }
@@ -28,6 +30,12 @@
     .pillrow { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
     .pill { border: 1px solid rgba(132,232,255,.28); background: rgba(8,36,42,.72); padding: 6px 8px; font-size: 12px; color: #dbf9ff; }
     .event { border-left: 3px solid #84e8ff; padding: 5px 0 5px 9px; margin: 6px 0; color: #dff9ff; font-size: 12px; }
+    .route { display: grid; grid-template-columns: 140px 1fr auto; gap: 9px; align-items: center; margin: 8px 0; font-size: 12px; }
+    .route strong { color: #fff; }
+    .route-path { color: #bcebf4; overflow-wrap: anywhere; }
+    .route.active { color: #ffc857; }
+    .being { display: grid; grid-template-columns: 92px 42px 1fr auto; gap: 8px; align-items: center; font-size: 12px; margin: 6px 0; color: #dff9ff; }
+    .being b { color: #fff; }
     .hint { position: fixed; right: 18px; bottom: 90px; color: #b7d8df; font-size: 13px; background: rgba(4, 18, 22, .7); border: 1px solid rgba(120, 225, 255, .24); padding: 10px 12px; }
     @media (max-width: 1000px) { .readout, .midright { display: none; } .midleft { top: auto; bottom: 96px; } .versions { grid-template-columns: repeat(7, minmax(42px, 1fr)); } }
   </style>
@@ -58,6 +66,14 @@
   <section class="midright">
     <h1>Live Interconnection</h1>
     <div id="events"></div>
+  </section>
+  <section class="circulation">
+    <h1>Content Circulation</h1>
+    <div id="circulation"></div>
+  </section>
+  <section class="telos">
+    <h1>Telos Field</h1>
+    <div id="telos"></div>
   </section>
   <section class="ladder">
     <button id="left">Left</button>
@@ -108,6 +124,16 @@
       ].map(([k, v]) => `<div class="mini"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("");
       document.getElementById("scopePills").innerHTML = (state.traffic_basis.scopes || []).slice(0, 8).map((s) => `<span class="pill">${esc(s.label)} · ${s.count}</span>`).join("") || "<span class='pill'>waiting for live scopes</span>";
       document.getElementById("events").innerHTML = buildEventStream().map((line, index) => `<div class="event" style="border-color:${index % 2 ? "#ffc857" : "#84e8ff"}">${esc(line)}</div>`).join("");
+      document.getElementById("circulation").innerHTML = state.circulation.routes.map((route) => {
+        const active = route.id === state.circulation.selected_route;
+        return `<div class="route ${active ? "active" : ""}"><strong>${esc(route.id)}</strong><span class="route-path">${esc(route.path.join(" -> "))}</span><span>${route.convenience}</span></div>`;
+      }).join("");
+      document.getElementById("telos").innerHTML = [
+        `<div class="mini"><span>thesis</span><strong>${esc(state.telos_field.math_principles.progress_signal)}</strong></div>`,
+        `<div class="mini"><span>invariant</span><strong>${esc(state.telos_field.math_principles.invariant)}</strong></div>`,
+        `<div class="mini"><span>evolution</span><strong>${esc(state.telos_field.math_principles.evolution.join(" · "))}</strong></div>`,
+        ...state.telos_field.beings.map((being) => `<div class="being"><b>${esc(being.name)}</b><span>${esc(being.carrier)}</span><span>${esc(being.version)} · ${esc(being.duty)}</span><strong>${being.activity}</strong></div>`)
+      ].join("");
       document.querySelectorAll(".version").forEach((button) => button.onclick = () => { selected = button.dataset.id; load(); });
     }
 
@@ -149,6 +175,9 @@
       drawField(cx, cy, maxR, selectedIndex, ladder.length || 13);
       drawCarrierShells(cx, cy, maxR);
       drawBridgeRibbons(cx, cy, maxR, ladder, selectedIndex);
+      drawCirculationRoutes(cx, cy, maxR, ladder);
+      drawGodelianBeings(cx, cy, maxR, ladder);
+      drawVirtuousCycles(cx, cy, maxR, ladder);
       drawBridges(cx, cy, maxR, ladder, selectedIndex);
       drawTraffic(cx, cy, maxR);
       drawComplexityWeather(cx, cy, maxR, ladder.length || 13);
@@ -282,12 +311,107 @@
       ctx.restore();
     }
 
+    function drawCirculationRoutes(cx, cy, maxR, ladder) {
+      const routes = state?.circulation?.routes || [];
+      if (!routes.length || !ladder.length) return;
+      const pointMap = versionPoints(cx, cy, maxR, ladder);
+      routes.forEach((route, routeIndex) => {
+        const active = route.id === state.circulation.selected_route;
+        const color = active ? [255, 200, 87] : routeIndex % 2 ? [132, 232, 255] : [243, 139, 255];
+        const alpha = active ? .52 : .18;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineWidth = active ? 5 : 2;
+        ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
+        ctx.beginPath();
+        route.path.forEach((id, index) => {
+          const p = pointMap.get(id);
+          if (!p) return;
+          if (index === 0) ctx.moveTo(p.x, p.y);
+          else {
+            const bend = (routeIndex - 2) * 22;
+            ctx.quadraticCurveTo(cx + Math.sin(t + routeIndex) * maxR * .18 + bend, cy + Math.cos(t * .6 + routeIndex) * maxR * .12 - bend * .35, p.x, p.y);
+          }
+        });
+        ctx.stroke();
+        const progress = (t * (.12 + routeIndex * .025)) % 1;
+        const sample = sampleRoutePoint(route.path, pointMap, progress);
+        if (sample) {
+          ctx.beginPath();
+          ctx.arc(sample.x, sample.y, active ? 8 : 5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${active ? .95 : .65})`;
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.shadowBlur = active ? 24 : 12;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+        ctx.restore();
+      });
+    }
+
+    function drawGodelianBeings(cx, cy, maxR, ladder) {
+      const beings = state?.telos_field?.beings || [];
+      if (!beings.length) return;
+      const points = versionPoints(cx, cy, maxR, ladder);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      beings.forEach((being, index) => {
+        const anchor = points.get(being.version) || { x: cx, y: cy };
+        const orbit = maxR * Number(being.patrol_radius || .2);
+        const a = t * (.5 + index * .07) + index * Math.PI * 2 / beings.length;
+        const x = anchor.x + Math.cos(a) * orbit * .35;
+        const y = anchor.y + Math.sin(a * 1.4) * orbit * .18;
+        const color = carrierColor(being.carrier);
+        ctx.beginPath();
+        ctx.arc(x, y, 7 + Number(being.activity || .5) * 8, 0, Math.PI * 2);
+        ctx.fillStyle = colorAlpha(color, .38);
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 18;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(anchor.x, anchor.y);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = colorAlpha(color, .28);
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#f4fdff";
+        ctx.font = "700 11px Inter, Segoe UI";
+        ctx.fillText(being.name.split(" ")[0], x + 10, y + 3);
+      });
+      ctx.restore();
+    }
+
+    function drawVirtuousCycles(cx, cy, maxR, ladder) {
+      const cycles = state?.telos_field?.virtuous_cycles || [];
+      if (!cycles.length) return;
+      const points = versionPoints(cx, cy, maxR, ladder);
+      cycles.forEach((cycle, index) => {
+        const route = cycle.route || [];
+        if (route.length < 2) return;
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.beginPath();
+        route.forEach((id, i) => {
+          const p = points.get(id);
+          if (!p) return;
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.quadraticCurveTo(cx + Math.sin(t + index + i) * maxR * .12, cy + Math.cos(t + index) * maxR * .08, p.x, p.y);
+        });
+        ctx.closePath();
+        ctx.strokeStyle = index === 0 ? "rgba(132,232,255,.22)" : index === 1 ? "rgba(255,200,87,.22)" : "rgba(243,139,255,.2)";
+        ctx.lineWidth = 2 + Number(cycle.gain || .5) * 2;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
     function drawBridges(cx, cy, maxR, ladder, selectedIndex) {
+      const points = versionPoints(cx, cy, maxR, ladder);
       ladder.forEach((version, index) => {
-        const a = -Math.PI * .9 + index / Math.max(1, ladder.length - 1) * Math.PI * 1.8;
-        const r = maxR * (.22 + index / Math.max(1, ladder.length) * .78);
-        const x = cx + Math.cos(a + t * .05) * r;
-        const y = cy + Math.sin(a) * r * .5;
+        const point = points.get(version.id);
+        const x = point.x;
+        const y = point.y;
         ctx.beginPath();
         ctx.arc(x, y, index === selectedIndex ? 12 : 7, 0, Math.PI * 2);
         ctx.fillStyle = index === selectedIndex ? "#ffc857" : carrierColor(version.carrier);
@@ -299,6 +423,30 @@
         ctx.font = "700 12px Inter, Segoe UI";
         ctx.fillText(version.id, x + 14, y + 4);
       });
+    }
+
+    function versionPoints(cx, cy, maxR, ladder) {
+      const points = new Map();
+      ladder.forEach((version, index) => {
+        const a = -Math.PI * .9 + index / Math.max(1, ladder.length - 1) * Math.PI * 1.8;
+        const r = maxR * (.22 + index / Math.max(1, ladder.length) * .78);
+        points.set(version.id, {
+          x: cx + Math.cos(a + t * .05) * r,
+          y: cy + Math.sin(a) * r * .5
+        });
+      });
+      return points;
+    }
+
+    function sampleRoutePoint(path, pointMap, progress) {
+      const pts = path.map((id) => pointMap.get(id)).filter(Boolean);
+      if (pts.length < 2) return pts[0] || null;
+      const scaled = progress * (pts.length - 1);
+      const index = Math.min(pts.length - 2, Math.floor(scaled));
+      const local = scaled - index;
+      const a = pts[index];
+      const b = pts[index + 1];
+      return { x: a.x + (b.x - a.x) * local, y: a.y + (b.y - a.y) * local };
     }
 
     function drawTraffic(cx, cy, maxR) {
@@ -382,6 +530,8 @@
         `${selectedVersion.id} carries ${selectedVersion.carrier} as ${selectedVersion.role}`,
         `${basis.traffic_events_window} live event(s) bend the local manifold`,
         `${basis.archive.packet_count} archived .s1 packets form the long-memory halo`,
+        `${state.circulation.selected_route} circulates content for informational convenience`,
+        `${state.telos_field.beings.length} Gödelian patrol/civilization agents stabilize virtuous cycles`,
         `${basis.topology_nodes}/${basis.topology_edges} topology nodes/edges tension the bridge lattice`,
         `${basis.dominance_trace.dominant_carrier} is dominant under ${basis.dominance_trace.invariant}`
       ];

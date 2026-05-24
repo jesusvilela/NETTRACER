@@ -49,6 +49,8 @@ export function buildSubstrateFoundation({
       projection_cost: round(0.18 + Math.min(0.16, index * 0.01))
     };
   });
+  const circulation = buildCirculation({ ladder, bridges, basis, selected });
+  const telosField = buildTelosField({ ladder, basis, circulation, selected });
 
   return {
     product: "netracer-substrate-foundation",
@@ -69,6 +71,8 @@ export function buildSubstrateFoundation({
     selected_version: selected,
     version_ladder: ladder,
     bridges,
+    circulation,
+    telos_field: telosField,
     traffic_basis: basis,
     invariants: {
       non_destructive: true,
@@ -76,7 +80,10 @@ export function buildSubstrateFoundation({
       lower_and_higher_navigation_declared: ladder.every((version) => version.id === "V1" || version.movement.left) && ladder.every((version) => version.id === "V13" || version.movement.right),
       traffic_capture_is_primary_evidence: true,
       archive_source_is_disclosed: Boolean(basis.archive.source),
-      no_flattening_of_prior_versions: true
+      no_flattening_of_prior_versions: true,
+      circulation_is_read_only_projection: circulation.writes.length === 0,
+      circulation_preserves_provenance: circulation.invariants.packet_identity && circulation.invariants.archive_provenance,
+      telos_field_is_simulated_readout: telosField.boundary === "engineering_simulation_not_sentience"
     },
     launch: {
       endpoint: "/api/substrate/foundation",
@@ -84,6 +91,211 @@ export function buildSubstrateFoundation({
       compatible_latest: selected.id
     }
   };
+}
+
+function buildTelosField({ ladder, basis, circulation, selected }) {
+  const ascent = [
+    { level: "R", algebra: "real", role: "measured ingress, packet identity, capture ground", function: "seed" },
+    { level: "C", algebra: "complex", role: "phase rotation, readable translation, signal circulation", function: "rotate" },
+    { level: "H", algebra: "quaternion", role: "orientation, patrol, hand/spinner route control", function: "orient" },
+    { level: "O", algebra: "octonion", role: "nonassociative bridge relation and mutual recognition", function: "weave" },
+    { level: "A_n", algebra: "n-hypercomplex", role: "cosmos manifold, archive memory, active remainder", function: "project" }
+  ];
+  const energy = basis.dominance_trace.total_energy;
+  const dominant = basis.dominance_trace.dominant_carrier;
+  const selectedRoute = circulation.routes.find((route) => route.id === circulation.selected_route) || circulation.routes[0];
+  const beings = buildGodelianBeings({ ladder, selectedRoute, basis, dominant });
+  const cycles = buildVirtuousCycles({ selectedRoute, basis, energy });
+  return {
+    name: "substrate_telos_over_hypercomplex_circulation",
+    boundary: "engineering_simulation_not_sentience",
+    philosophy: {
+      thesis: "Cognition is stratified ascent through algebraic roles under conserved total cognitive energy.",
+      telos: "move network content through the most informative projection without destroying provenance or active remainder",
+      substrate: "traffic capture, topology, and .s1 archive are the evidence ground"
+    },
+    math_principles: {
+      state: "X = (R,C,H,O,A_n; traffic, topology, archive, bridges)",
+      evolution: ["fractal_thread_lower_to_higher", "adiabatic_swirl_per_level", "Phi_cog_plus_late_projection"],
+      invariant: "total_cognitive_energy",
+      progress_signal: "dominance_trace_ascent",
+      current_dominant_carrier: dominant,
+      selected_version: selected.id
+    },
+    ascent,
+    beings,
+    virtuous_cycles: cycles,
+    stewardship: {
+      rule: "patrols route content by purpose; civilizations stabilize local meaning fields",
+      guardrails: ["read-only projection", "no packet deletion", "archive provenance retained", "active remainder displayed"]
+    }
+  };
+}
+
+function buildGodelianBeings({ ladder, selectedRoute, basis, dominant }) {
+  const routePath = selectedRoute?.path?.length ? selectedRoute.path : ladder.map((version) => version.id);
+  const archetypes = [
+    ["Archivist", "A_n", "keeps long-memory halo coherent"],
+    ["Bridge Patrol", "O", "checks non-collapse across version crossings"],
+    ["Spinner Hand", "H", "orients route flow and circulation direction"],
+    ["Translator", "C", "keeps content readable during phase shift"],
+    ["Ingress Witness", "R", "anchors claims to captured traffic"]
+  ];
+  return archetypes.map(([name, carrier, duty], index) => {
+    const versionId = routePath[index % routePath.length];
+    const version = ladder.find((item) => item.id === versionId) || ladder[index % ladder.length];
+    const activity = round(clamp01(0.34 + (carrier === dominant ? 0.28 : 0.08) + Number(basis.traffic_events_window || 0) * 0.01 + index * 0.035));
+    return {
+      id: `godelian-${index + 1}`,
+      name,
+      carrier,
+      version: version.id,
+      duty,
+      activity,
+      patrol_radius: round(0.18 + index * 0.07 + activity * 0.12),
+      meaning_seed: `${carrier}:${version.id}:${name.toLowerCase().replace(/\s+/g, "-")}`
+    };
+  });
+}
+
+function buildVirtuousCycles({ selectedRoute, basis, energy }) {
+  const path = selectedRoute?.path || [];
+  const traffic = Number(basis.traffic_events_window || 0);
+  const archive = Number(basis.archive.packet_count || 0);
+  return [
+    {
+      id: "capture-understand-return",
+      loop: ["capture", "translate", "analyze", "return"],
+      route: path,
+      gain: round(clamp01(0.44 + traffic * 0.012 + Math.log10(Math.max(10, archive)) * 0.035))
+    },
+    {
+      id: "archive-world-explain",
+      loop: ["archive", "world", "spectator", "meaning"],
+      route: ["V13", "V12", "V7", "V1"],
+      gain: round(clamp01(0.38 + energy * 0.009))
+    },
+    {
+      id: "patrol-stabilize-reseed",
+      loop: ["patrol", "stabilize", "reseed", "ascend"],
+      route: ["V10", "V11", "V4", "V8", "V13"],
+      gain: round(clamp01(0.41 + path.length * 0.04))
+    }
+  ];
+}
+
+function buildCirculation({ ladder, bridges, basis, selected }) {
+  const byId = new Map(ladder.map((version) => [version.id, version]));
+  const trafficLoad = Number(basis.traffic_events_window || 0);
+  const archivePackets = Number(basis.archive.packet_count || 0);
+  const topologyLoad = Number(basis.topology_nodes || 0) + Number(basis.topology_edges || 0);
+  const dominant = basis.dominance_trace.dominant_carrier;
+  const routes = [
+    makeRoute({
+      id: "capture-to-semantic",
+      purpose: "make fresh network content readable",
+      path: ["V1", "V2", "V4", "V7", "V13"],
+      dominant,
+      load: trafficLoad + archivePackets * 0.00004,
+      byId
+    }),
+    makeRoute({
+      id: "semantic-to-world",
+      purpose: "turn analysis into navigable world experience",
+      path: ["V13", "V11", "V12", "V8", "V5"],
+      dominant,
+      load: topologyLoad + trafficLoad * 0.6,
+      byId
+    }),
+    makeRoute({
+      id: "archive-memory-loop",
+      purpose: "circulate long-memory archive back into live capture",
+      path: ["V13", "V10", "V7", "V4", "V1"],
+      dominant,
+      load: Math.log10(Math.max(10, archivePackets)) * 6,
+      byId
+    }),
+    makeRoute({
+      id: "operator-return",
+      purpose: "return from rich projection to operational control",
+      path: [selected.id, "V11", "V4", "V2", "V1"].filter((value, index, all) => value && all.indexOf(value) === index),
+      dominant,
+      load: 4 + trafficLoad * 0.35,
+      byId
+    }),
+    makeRoute({
+      id: "world-growth-loop",
+      purpose: "grow worlds from live topology and circulate back as meaning",
+      path: ["V5", "V8", "V9", "V12", "V13", "V7"],
+      dominant,
+      load: topologyLoad * 0.9 + trafficLoad * 0.4,
+      byId
+    })
+  ];
+  const bridgeSet = new Set(bridges.flatMap((bridge) => [bridge.id, bridge.inverse]));
+  return {
+    operator: "hypercomplex_content_circulation",
+    mode: "read_only_routing_projection",
+    writes: [],
+    substrate_rule: "network content circulates through the version manifold by purpose; packets and archive rows remain the evidence base",
+    selected_route: selectRoute(routes, basis, selected),
+    routes: routes.map((route) => ({
+      ...route,
+      bridge_coverage: route.edges.filter((edge) => bridgeSet.has(edge) || bridgeSet.has(edge.split("->").reverse().join("->"))).length,
+      admissible: route.path.every((id) => byId.has(id))
+    })),
+    invariants: {
+      packet_identity: true,
+      archive_provenance: true,
+      active_remainder: true,
+      non_destructive: true,
+      lower_higher_return_path: true
+    }
+  };
+}
+
+function makeRoute({ id, purpose, path, dominant, load, byId }) {
+  const safePath = path.filter((versionId) => byId.has(versionId));
+  const edges = [];
+  for (let index = 1; index < safePath.length; index += 1) {
+    edges.push(`${safePath[index - 1]}->${safePath[index]}`);
+  }
+  const carriers = safePath.map((versionId) => byId.get(versionId).carrier);
+  const uniqueCarriers = [...new Set(carriers)];
+  const curvature = round(0.18 + uniqueCarriers.length * 0.047 + safePath.length * 0.013);
+  const convenience = round(clamp01(0.54 + Math.log10(Math.max(1, load)) * 0.09 + (uniqueCarriers.includes(dominant) ? 0.12 : 0)));
+  const remainder = round(clamp01(0.22 + uniqueCarriers.length * 0.055 + safePath.length * 0.018 - convenience * 0.08));
+  return {
+    id,
+    purpose,
+    path: safePath,
+    edges,
+    carriers,
+    carrier_span: uniqueCarriers,
+    load: round(load),
+    curvature,
+    convenience,
+    active_remainder: remainder,
+    selected_if: selectionRule(id)
+  };
+}
+
+function selectRoute(routes, basis, selected) {
+  const latestScope = basis.latest_event?.scope || "";
+  if (/world/i.test(latestScope) || selected.id === "V12") return "semantic-to-world";
+  if (/archive|s1/i.test(latestScope) || selected.id === "V13") return "archive-memory-loop";
+  if (selected.id === "V1" || selected.id === "V2") return "capture-to-semantic";
+  return routes.slice().sort((left, right) => right.convenience - left.convenience)[0]?.id || routes[0]?.id || "";
+}
+
+function selectionRule(id) {
+  return {
+    "capture-to-semantic": "fresh traffic or low-version operational inspection",
+    "semantic-to-world": "world-facing narration or V12 first-person projection",
+    "archive-memory-loop": "archive-heavy semantic recall or V13 analysis",
+    "operator-return": "manual control and compatibility descent",
+    "world-growth-loop": "topology-heavy growth and network-world expansion"
+  }[id] || "purpose-selected circulation";
 }
 
 function buildTrafficBasis({ traffic, topology, archiveSource }) {
@@ -165,4 +377,8 @@ function inferScope(entry) {
 
 function round(value) {
   return Number(value.toFixed(6));
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
 }

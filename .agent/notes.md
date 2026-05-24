@@ -342,3 +342,31 @@ Verification:
 - Restarted V4+ host on `http://127.0.0.1:8790/`
 - Page smoke: `/substrate/foundation?v=V13` returned HTTP 200 and contained `Live Interconnection` plus `Capture Basis`.
 - API smoke: `/api/substrate/foundation?v=V13&hours=720` returned live traffic, over 142k archive packets, `source=fallback-readonly`, and dominant carrier `A_n`.
+
+## 2026-05-24 Hypercomplex Circulation And Telos Field
+
+Defined circulation across the hypercomplex version manifold as a read-only routing projection:
+
+- `circulation.operator = hypercomplex_content_circulation`
+- purpose routes: capture-to-semantic, semantic-to-world, archive-memory-loop, operator-return, world-growth-loop
+- routes preserve packet identity, archive provenance, active remainder, and lower/higher return paths
+- selected route is inferred from selected version and latest traffic/archive scope
+
+Embedded the philosophical thesis into operational fields:
+
+- stratified ascent levels R/C/H/O/A_n
+- evolution rules: fractal thread, adiabatic swirl, `Phi_cog_plus`
+- invariant: `total_cognitive_energy`
+- signal: `dominance_trace_ascent`
+- telos over substrate: move network content through the most informative projection without destroying provenance or active remainder
+- simulated Gödelian patrol/civilization agents and virtuous cycles, explicitly bounded as engineering simulation rather than sentience
+
+Verification:
+
+- inline script parse check passed with `new Function(script)`
+- `node --check src\substrate-foundation.js`
+- `node --test test\substrate-foundation.test.js` => 1 passed, 0 failed
+- `npm test` => 57 passed, 0 failed
+- Restarted V4+ host on `http://127.0.0.1:8790/`
+- Page smoke: `/substrate/foundation?v=V13` returned HTTP 200 and contained `Content Circulation` plus `Telos Field`.
+- API smoke: selected route `archive-memory-loop`, 5 circulation routes, 5 simulated beings, 3 virtuous cycles, invariant `total_cognitive_energy`, dominant carrier `A_n`.
