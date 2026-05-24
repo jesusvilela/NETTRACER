@@ -19,10 +19,17 @@
     .version { min-height: 48px; border: 1px solid rgba(132, 232, 255, .34); background: rgba(5, 24, 28, .78); color: #dff9ff; font-weight: 800; }
     .version.active { background: #ffc857; color: #171003; border-color: #ffd98b; }
     .readout { position: fixed; right: 18px; top: 18px; width: min(470px, calc(100vw - 36px)); background: rgba(4, 18, 22, .84); border: 1px solid rgba(120, 225, 255, .34); padding: 16px 18px; backdrop-filter: blur(14px); }
+    .midleft { position: fixed; left: 18px; top: 342px; width: min(390px, calc(100vw - 36px)); background: rgba(4, 18, 22, .74); border: 1px solid rgba(255, 200, 87, .32); padding: 14px 16px; backdrop-filter: blur(12px); }
+    .midright { position: fixed; right: 18px; top: 284px; width: min(470px, calc(100vw - 36px)); background: rgba(4, 18, 22, .72); border: 1px solid rgba(243, 139, 255, .28); padding: 14px 16px; backdrop-filter: blur(12px); }
     .carrier { display: grid; grid-template-columns: 42px 1fr 74px; gap: 10px; align-items: center; margin: 8px 0; font-size: 13px; }
     .bar { height: 8px; background: rgba(255,255,255,.1); overflow: hidden; }
     .fill { height: 100%; background: linear-gradient(90deg, #84e8ff, #ffc857); }
+    .mini { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 7px 0; color: #cfeff5; font-size: 12px; }
+    .pillrow { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .pill { border: 1px solid rgba(132,232,255,.28); background: rgba(8,36,42,.72); padding: 6px 8px; font-size: 12px; color: #dbf9ff; }
+    .event { border-left: 3px solid #84e8ff; padding: 5px 0 5px 9px; margin: 6px 0; color: #dff9ff; font-size: 12px; }
     .hint { position: fixed; right: 18px; bottom: 90px; color: #b7d8df; font-size: 13px; background: rgba(4, 18, 22, .7); border: 1px solid rgba(120, 225, 255, .24); padding: 10px 12px; }
+    @media (max-width: 1000px) { .readout, .midright { display: none; } .midleft { top: auto; bottom: 96px; } .versions { grid-template-columns: repeat(7, minmax(42px, 1fr)); } }
   </style>
 </head>
 <body>
@@ -43,6 +50,15 @@
     <h1>Dominance Trace</h1>
     <div id="carriers"></div>
   </section>
+  <section class="midleft">
+    <h1>Capture Basis</h1>
+    <div id="basis"></div>
+    <div class="pillrow" id="scopePills"></div>
+  </section>
+  <section class="midright">
+    <h1>Live Interconnection</h1>
+    <div id="events"></div>
+  </section>
   <section class="ladder">
     <button id="left">Left</button>
     <div class="versions" id="versions"></div>
@@ -56,6 +72,12 @@
     let selected = new URL(location.href).searchParams.get("v") || "V13";
     let fast = true;
     let t = 0;
+    const particles = Array.from({ length: 360 }, (_, i) => ({
+      seed: i * 97.137,
+      lane: i % 13,
+      carrier: ["R", "C", "H", "O", "A_n"][i % 5],
+      size: 1.1 + (i % 7) * .55
+    }));
 
     async function load() {
       const response = await fetch(`/api/substrate/foundation?v=${encodeURIComponent(selected)}`, { cache: "no-store" });
@@ -77,6 +99,15 @@
         const width = Math.min(100, c.energy / Math.max(1, state.traffic_basis.dominance_trace.total_energy) * 240);
         return `<div class="carrier"><strong>${c.carrier}</strong><div><div>${esc(c.source)}</div><div class="bar"><div class="fill" style="width:${width}%"></div></div></div><strong>${c.energy}</strong></div>`;
       }).join("");
+      document.getElementById("basis").innerHTML = [
+        ["total energy", state.traffic_basis.dominance_trace.total_energy],
+        ["dominant", state.traffic_basis.dominance_trace.dominant_carrier],
+        ["archive ratio", state.traffic_basis.archive.compression_ratio],
+        ["bridge count", state.bridges.length],
+        ["latest event", latestEventLabel()]
+      ].map(([k, v]) => `<div class="mini"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("");
+      document.getElementById("scopePills").innerHTML = (state.traffic_basis.scopes || []).slice(0, 8).map((s) => `<span class="pill">${esc(s.label)} · ${s.count}</span>`).join("") || "<span class='pill'>waiting for live scopes</span>";
+      document.getElementById("events").innerHTML = buildEventStream().map((line, index) => `<div class="event" style="border-color:${index % 2 ? "#ffc857" : "#84e8ff"}">${esc(line)}</div>`).join("");
       document.querySelectorAll(".version").forEach((button) => button.onclick = () => { selected = button.dataset.id; load(); });
     }
 
@@ -112,27 +143,143 @@
       const maxR = Math.min(w, h) * .36;
       const ladder = state?.version_ladder || [];
       const selectedIndex = Math.max(0, ladder.findIndex((v) => v.id === selected));
+      drawBackground(w, h);
+      drawArchiveHalo(cx, cy, maxR);
+      drawTopologyLattice(cx, cy, maxR);
       drawField(cx, cy, maxR, selectedIndex, ladder.length || 13);
+      drawCarrierShells(cx, cy, maxR);
+      drawBridgeRibbons(cx, cy, maxR, ladder, selectedIndex);
       drawBridges(cx, cy, maxR, ladder, selectedIndex);
       drawTraffic(cx, cy, maxR);
+      drawComplexityWeather(cx, cy, maxR, ladder.length || 13);
+      drawFocusLens(cx, cy, maxR, selectedIndex);
+    }
+
+    function drawBackground(w, h) {
+      const gradient = ctx.createRadialGradient(w * .52, h * .52, 20, w * .52, h * .52, Math.max(w, h) * .7);
+      gradient.addColorStop(0, "rgba(8,32,38,.72)");
+      gradient.addColorStop(.45, "rgba(3,9,13,.9)");
+      gradient.addColorStop(1, "#020406");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+      ctx.save();
+      ctx.globalAlpha = .22;
+      for (let i = 0; i < 90; i += 1) {
+        const x = (i * 211 + Math.sin(t + i) * 80) % w;
+        const y = (i * 137 + Math.cos(t * .7 + i) * 40) % h;
+        ctx.fillStyle = i % 3 === 0 ? "#84e8ff" : i % 3 === 1 ? "#ffc857" : "#f38bff";
+        ctx.fillRect(x, y, 1.6, 1.6);
+      }
+      ctx.restore();
     }
 
     function drawField(cx, cy, maxR, selectedIndex, count) {
-      for (let ring = 0; ring < count; ring += 1) {
+      for (let ring = 0; ring < count * 2; ring += 1) {
         const r = maxR * (.16 + ring / count * .9);
         const phase = t * (0.5 + ring * .04);
         ctx.beginPath();
         for (let i = 0; i <= 240; i += 1) {
           const a = i / 240 * Math.PI * 2;
-          const warp = Math.sin(a * 3 + phase) * 10 + Math.cos(a * 5 - phase) * 6;
-          const x = cx + Math.cos(a + phase * .1) * (r + warp);
-          const y = cy + Math.sin(a - phase * .12) * (r * .42 + warp * .3);
+          const warp = Math.sin(a * 3 + phase) * 10 + Math.cos(a * 5 - phase) * 6 + Math.sin(a * 11 + t) * 3;
+          const tilt = Math.sin(t * .25 + ring) * .18;
+          const x = cx + Math.cos(a + phase * .1) * (r + warp) + Math.sin(a * 2) * maxR * tilt * .08;
+          const y = cy + Math.sin(a - phase * .12) * (r * (.34 + ring % 3 * .035) + warp * .3);
           if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
-        ctx.strokeStyle = ring === selectedIndex ? "rgba(255,200,87,.92)" : "rgba(93,202,255,.22)";
-        ctx.lineWidth = ring === selectedIndex ? 2.6 : 1.2;
+        ctx.strokeStyle = ring % count === selectedIndex ? "rgba(255,200,87,.92)" : ring % 2 ? "rgba(93,202,255,.18)" : "rgba(168,183,255,.12)";
+        ctx.lineWidth = ring % count === selectedIndex ? 2.8 : .8;
         ctx.stroke();
       }
+    }
+
+    function drawArchiveHalo(cx, cy, maxR) {
+      const packets = Number(state?.traffic_basis?.archive?.packet_count || 0);
+      const rings = 8 + Math.min(22, Math.floor(Math.log10(Math.max(10, packets)) * 3));
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (let j = 0; j < rings; j += 1) {
+        const r = maxR * (.28 + j / rings * .9);
+        ctx.beginPath();
+        for (let i = 0; i <= 320; i += 1) {
+          const a = i / 320 * Math.PI * 2;
+          const fold = Math.sin(a * (5 + j % 4) + t * (1 + j * .03)) * 14;
+          const x = cx + Math.cos(a + j * .03) * (r + fold);
+          const y = cy + Math.sin(a - j * .02) * (r * .22 + fold * .16);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = `rgba(255,200,87,${0.04 + j / rings * .035})`;
+        ctx.lineWidth = 1 + j / rings * 1.2;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawTopologyLattice(cx, cy, maxR) {
+      const nodes = Math.max(6, Math.min(80, state?.traffic_basis?.topology_nodes || 18));
+      const edges = Math.max(8, Math.min(140, state?.traffic_basis?.topology_edges || 22));
+      const pts = Array.from({ length: nodes }, (_, i) => {
+        const a = i * 2.399963 + t * .03;
+        const r = maxR * (.18 + ((i * 29) % 100) / 130);
+        return [cx + Math.cos(a) * r, cy + Math.sin(a * 1.17) * r * .42];
+      });
+      ctx.save();
+      ctx.globalAlpha = .32;
+      for (let e = 0; e < edges; e += 1) {
+        const a = pts[e % pts.length];
+        const b = pts[(e * 7 + 3) % pts.length];
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.quadraticCurveTo(cx + Math.sin(e) * maxR * .08, cy + Math.cos(e) * maxR * .05, b[0], b[1]);
+        ctx.strokeStyle = e % 4 === 0 ? "rgba(243,139,255,.32)" : "rgba(132,232,255,.22)";
+        ctx.lineWidth = .7;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawCarrierShells(cx, cy, maxR) {
+      const carriers = state?.traffic_basis?.dominance_trace?.carriers || [];
+      carriers.forEach((carrier, i) => {
+        const energy = Number(carrier.energy || 1);
+        const r = maxR * (.18 + i * .12 + Math.min(.1, energy / 160));
+        ctx.beginPath();
+        for (let p = 0; p <= 180; p += 1) {
+          const a = p / 180 * Math.PI * 2;
+          const x = cx + Math.cos(a + t * (.08 + i * .02)) * r;
+          const y = cy + Math.sin(a - t * (.04 + i * .01)) * r * (.12 + i * .045);
+          if (p === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = carrierColor(carrier.carrier).replace(")", ",.38)").replace("#", "");
+        ctx.strokeStyle = colorAlpha(carrierColor(carrier.carrier), .22 + i * .035);
+        ctx.lineWidth = 1.4 + Math.min(3, energy / 30);
+        ctx.stroke();
+      });
+    }
+
+    function drawBridgeRibbons(cx, cy, maxR, ladder, selectedIndex) {
+      if (!ladder.length) return;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < ladder.length - 1; i += 1) {
+        const a0 = -Math.PI * .9 + i / Math.max(1, ladder.length - 1) * Math.PI * 1.8;
+        const a1 = -Math.PI * .9 + (i + 1) / Math.max(1, ladder.length - 1) * Math.PI * 1.8;
+        const r0 = maxR * (.22 + i / Math.max(1, ladder.length) * .78);
+        const r1 = maxR * (.22 + (i + 1) / Math.max(1, ladder.length) * .78);
+        const x0 = cx + Math.cos(a0 + t * .05) * r0;
+        const y0 = cy + Math.sin(a0) * r0 * .5;
+        const x1 = cx + Math.cos(a1 + t * .05) * r1;
+        const y1 = cy + Math.sin(a1) * r1 * .5;
+        const active = i === selectedIndex || i + 1 === selectedIndex;
+        for (let band = 0; band < 3; band += 1) {
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.bezierCurveTo(cx - maxR * .25 + band * 24, cy - maxR * .3 + Math.sin(t + i) * 40, cx + maxR * .25 - band * 18, cy + maxR * .22 + Math.cos(t + i) * 28, x1, y1);
+          ctx.strokeStyle = active ? `rgba(255,200,87,${.28 - band * .05})` : `rgba(132,232,255,${.13 - band * .025})`;
+          ctx.lineWidth = active ? 3.2 - band * .7 : 1.5 - band * .3;
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
     }
 
     function drawBridges(cx, cy, maxR, ladder, selectedIndex) {
@@ -155,21 +302,89 @@
     }
 
     function drawTraffic(cx, cy, maxR) {
-      const pulses = Math.max(5, Math.min(80, state?.traffic_basis?.traffic_events_window || 18));
+      const pulses = Math.max(32, Math.min(260, (state?.traffic_basis?.traffic_events_window || 18) * 4));
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
       for (let i = 0; i < pulses; i += 1) {
-        const a = i * 2.399 + t * (1 + i % 5 * .08);
+        const a = i * 2.399 + t * (1.2 + i % 5 * .08);
         const r = maxR * (.1 + ((i * 17) % 100) / 100 * .85);
         const x = cx + Math.cos(a) * r;
         const y = cy + Math.sin(a * 1.3) * r * .5;
+        const tail = 10 + (i % 8) * 4;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - Math.cos(a) * tail, y - Math.sin(a * 1.3) * tail * .5);
+        ctx.strokeStyle = i % 3 === 0 ? "rgba(132,232,255,.52)" : i % 3 === 1 ? "rgba(255,200,87,.5)" : "rgba(243,139,255,.44)";
+        ctx.lineWidth = .8 + (i % 4) * .2;
+        ctx.stroke();
         ctx.beginPath();
         ctx.arc(x, y, 2 + (i % 4), 0, Math.PI * 2);
         ctx.fillStyle = i % 3 === 0 ? "#84e8ff" : i % 3 === 1 ? "#ffc857" : "#f38bff";
         ctx.fill();
       }
+      ctx.restore();
+    }
+
+    function drawComplexityWeather(cx, cy, maxR, count) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      particles.forEach((p, i) => {
+        const lane = (p.lane + Math.floor(t * .6)) % Math.max(1, count);
+        const a = p.seed + t * (.18 + lane * .012);
+        const r = maxR * (.1 + lane / count * .95 + Math.sin(t + i) * .015);
+        const x = cx + Math.cos(a) * r + Math.sin(t * 1.3 + i) * 12;
+        const y = cy + Math.sin(a * 1.11) * r * .46 + Math.cos(t + i) * 6;
+        ctx.beginPath();
+        ctx.arc(x, y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = colorAlpha(carrierColor(p.carrier), .28 + (i % 5) * .05);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    function drawFocusLens(cx, cy, maxR, selectedIndex) {
+      const phase = t * .9;
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (let i = 0; i < 5; i += 1) {
+        const r = maxR * (.08 + selectedIndex / 13 * .75 + i * .028);
+        ctx.beginPath();
+        ctx.ellipse(cx + Math.cos(phase + i) * 20, cy + Math.sin(phase * .7 + i) * 12, r, r * .22, phase * .12 + i * .4, 0, Math.PI * 2);
+        ctx.strokeStyle = i % 2 ? "rgba(255,200,87,.2)" : "rgba(132,232,255,.22)";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     function carrierColor(carrier) {
       return ({ R:"#e8fbff", C:"#84e8ff", H:"#ff9f5a", O:"#a8b7ff", A_n:"#ffc857" })[carrier] || "#cdf";
+    }
+
+    function colorAlpha(hex, alpha) {
+      const clean = String(hex).replace("#", "");
+      const r = parseInt(clean.slice(0, 2), 16);
+      const g = parseInt(clean.slice(2, 4), 16);
+      const b = parseInt(clean.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function latestEventLabel() {
+      const ev = state?.traffic_basis?.latest_event;
+      if (!ev) return "waiting";
+      return `${ev.scope || "live"} · ${ev.direction || "event"}`;
+    }
+
+    function buildEventStream() {
+      const selectedVersion = state.selected_version;
+      const basis = state.traffic_basis;
+      return [
+        `${selectedVersion.id} carries ${selectedVersion.carrier} as ${selectedVersion.role}`,
+        `${basis.traffic_events_window} live event(s) bend the local manifold`,
+        `${basis.archive.packet_count} archived .s1 packets form the long-memory halo`,
+        `${basis.topology_nodes}/${basis.topology_edges} topology nodes/edges tension the bridge lattice`,
+        `${basis.dominance_trace.dominant_carrier} is dominant under ${basis.dominance_trace.invariant}`
+      ];
     }
 
     function esc(value) {

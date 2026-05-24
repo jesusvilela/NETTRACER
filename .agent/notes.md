@@ -320,3 +320,25 @@ Verification:
 - Restarted V4+ host on `http://127.0.0.1:8790/`
 - API smoke: two calls to `/api/substrate/foundation?v=V13&hours=720` increased `traffic_events_window` from 2 to 4 with `latest_event.direction=LIVE_HTTP`.
 - Latest smoke also saw `source=fallback-readonly`, over 140k archive packets, and dominant carrier `A_n`.
+
+## 2026-05-24 Substrate Foundation Richness Pass
+
+Increased the `/substrate/foundation` surface density without changing capture semantics:
+
+- archive halo rings from `.s1` packet count
+- topology lattice from live node/edge counts
+- carrier shells over R/C/H/O/A_n dominance trace
+- bridge ribbons between V1-V13
+- live traffic comets and complexity particles
+- focus lens around selected version
+- added Capture Basis and Live Interconnection panels
+
+Verification:
+
+- inline script parse check passed with `new Function(script)`
+- `node --check src\server.js`
+- `node --test test\substrate-foundation.test.js` => 1 passed, 0 failed
+- `npm test` => 57 passed, 0 failed
+- Restarted V4+ host on `http://127.0.0.1:8790/`
+- Page smoke: `/substrate/foundation?v=V13` returned HTTP 200 and contained `Live Interconnection` plus `Capture Basis`.
+- API smoke: `/api/substrate/foundation?v=V13&hours=720` returned live traffic, over 142k archive packets, `source=fallback-readonly`, and dominant carrier `A_n`.
