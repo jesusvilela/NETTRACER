@@ -1,5 +1,5 @@
 {
-  "task": "NetTracer substrate foundation and traffic capture base",
+  "task": "NetTracer substrate foundation and live traffic capture base",
   "status": "verified-launched",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
@@ -12,7 +12,7 @@
     "focused_test": "node --test test\\substrate-foundation.test.js test\\v13-s1-archive-source.test.js",
     "full_test": "npm test",
     "full_test_result": "57 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/substrate/foundation?v=V13&hours=720 exposes V1-V13 version ladder, non-destructive capture contract, traffic basis, archive provenance, and dominance trace",
+    "api_smoke": "http://127.0.0.1:8790/api/substrate/foundation?v=V13&hours=720 exposes V1-V13 version ladder, non-destructive capture contract, live traffic basis, archive provenance, and dominance trace",
     "page_smoke": "http://127.0.0.1:8790/substrate/foundation returns 200; all V1-V13 routes also returned 200",
     "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v13-hypercomplex-semantic-analysis-fallback.png",
     "substrate_foundation": {
@@ -21,7 +21,8 @@
       "version_count": 13,
       "movement_rule": "left lowers projection complexity; right increases semantic/geometric richness",
       "dominant_carrier": "A_n",
-      "latest_observed_archive_packets": 137314
+      "latest_observed_archive_packets": 140919,
+      "live_http_capture": "two foundation API calls increased traffic_events_window from 2 to 4 with latest_event.direction=LIVE_HTTP"
     },
     "s1_archive_source": {
       "mode": "fallback-readonly",

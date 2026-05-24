@@ -302,3 +302,21 @@ Verification:
 - API smoke: `/api/substrate/foundation?v=V13&hours=720` returned 13 versions, `source=fallback-readonly`, over 137k archive packets, and dominant carrier `A_n`.
 
 Render caveat: in-app Browser was not exposed and bundled Playwright was missing `playwright-core`, so screenshot automation could not run in this environment for the new page.
+
+## 2026-05-24 Live Traffic Capture
+
+Extended the live traffic basis beyond chat completions:
+
+- tracked version UI/API presence now emits bounded `LIVE_HTTP` traffic events
+- `/substrate/foundation` and `/api/substrate/foundation` participate in the same traffic stream they visualize
+- V4-V13 view routes are now tracked as live presence traffic
+- V1/V2/DOSBox/chat/models/embeddings/SLANG tracking remains compatible
+
+Verification:
+
+- `node --check src\server.js`
+- `node --test test\substrate-foundation.test.js test\broker.test.js` => 6 passed, 0 failed
+- `npm test` => 57 passed, 0 failed
+- Restarted V4+ host on `http://127.0.0.1:8790/`
+- API smoke: two calls to `/api/substrate/foundation?v=V13&hours=720` increased `traffic_events_window` from 2 to 4 with `latest_event.direction=LIVE_HTTP`.
+- Latest smoke also saw `source=fallback-readonly`, over 140k archive packets, and dominant carrier `A_n`.

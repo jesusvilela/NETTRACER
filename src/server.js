@@ -100,6 +100,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         remoteAddress: clientMeta.remoteAddress,
         userAgent: clientMeta.userAgent
       });
+      recordLiveHttpTraffic(traceStore, clientMeta, request, url);
     }
 
     try {
@@ -1317,6 +1318,8 @@ function shouldTrackClientPresence(request, url) {
   const path = String(url?.pathname || "");
   if (path === "/healthz") return false;
   if (path === "/" || path === "/v2" || path === "/dosbox" || path === "/ws/slang") return true;
+  if (path === "/cognition" || path === "/substrate/foundation" || path === "/api/substrate/foundation") return true;
+  if (/^\/v\d+\//.test(path)) return true;
   if (path === "/v1/chat/completions" || path === "/api/packs/intend" || path === "/v1/models" || path === "/v1/embeddings") return true;
   return path.startsWith("/api/slang/");
 }
@@ -1325,7 +1328,11 @@ function routeScope(pathname = "") {
   const value = String(pathname || "");
   if (value === "/") return "ui-v1";
   if (value === "/v2") return "ui-v2";
+  if (value === "/cognition") return "ui-v2";
   if (value === "/dosbox") return "dosbox";
+  if (/^\/v\d+\//.test(value)) return `ui-${value.split("/")[1]}`;
+  if (value === "/substrate/foundation") return "ui-substrate-foundation";
+  if (value === "/api/substrate/foundation") return "api-substrate-foundation";
   if (value === "/ws/slang") return "slang-ws";
   if (value === "/v1/chat/completions") return "chat";
   if (value === "/v1/models") return "models";
@@ -1334,6 +1341,23 @@ function routeScope(pathname = "") {
   if (/^\/api\/slang\/nodes\/[^/]+\/receive$/.test(value)) return "slang-node";
   if (value.startsWith("/api/slang/")) return "slang-api";
   return "client";
+}
+
+function recordLiveHttpTraffic(traceStore, clientMeta, request, url) {
+  traceStore.addTraffic?.({
+    timestamp: Date.now(),
+    direction: "LIVE_HTTP",
+    type: "live-presence",
+    method: request.method || "GET",
+    path: url.pathname,
+    scope: clientMeta.scope,
+    clientId: clientMeta.clientId,
+    label: clientMeta.label,
+    remoteAddress: clientMeta.remoteAddress,
+    userAgent: clientMeta.userAgent,
+    route: clientMeta.scope,
+    routeHint: "live-traffic"
+  });
 }
 
 function friendlyClientStem(userAgent = "") {
