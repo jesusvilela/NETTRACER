@@ -37,6 +37,7 @@
     <div class="row"><span>semantic energy</span><span class="value" id="energy">-</span></div>
     <div class="row"><span>gluing / remainder</span><span class="value" id="gluing">-</span></div>
     <div class="row"><span>archive packets</span><span class="value" id="packets">-</span></div>
+    <div class="row"><span>archive source</span><span class="value" id="source">-</span></div>
     <div class="row"><span>nodes / traffic</span><span class="value" id="substrate">-</span></div>
     <div id="strata"></div>
   </section>
@@ -87,6 +88,7 @@
       document.getElementById("energy").textContent = state.hypercomplex_semantics.total_semantic_energy;
       document.getElementById("gluing").textContent = `${state.hypercomplex_semantics.gluing_quality} / ${state.hypercomplex_semantics.active_remainder}`;
       document.getElementById("packets").textContent = state.substrate.archive_packets;
+      document.getElementById("source").textContent = state.substrate.source === "fallback-readonly" ? `fallback ${state.substrate.fallback_path}` : state.substrate.source;
       document.getElementById("substrate").textContent = `${state.substrate.topology_nodes} nodes / ${state.substrate.traffic_events} events`;
       document.getElementById("strata").innerHTML = state.hypercomplex_semantics.strata.map((s) => `<div class="stratum"><strong>${esc(s.id)} · ${esc(s.label)}</strong><div>${esc(s.role)}</div><div class="bar"><div class="fill" style="width:${Math.max(4, s.normalized*100)}%"></div></div><div>${s.evidence.map(esc).join(" · ")}</div></div>`).join("");
       document.getElementById("motifs").innerHTML = state.motifs.length ? state.motifs.map((m) => `<div class="motif"><strong>${esc(m.carrier)} · ${esc(m.stage)} · ${esc(m.label)}</strong>${esc(m.interpretation)}</div>`).join("") : "<div class='motif'>No decoded motifs yet. Archive more .s1 traffic to populate this layer.</div>";

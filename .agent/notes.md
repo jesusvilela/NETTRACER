@@ -256,3 +256,26 @@ Verification:
 - API smoke: V13 API returned HTTP 200.
 - Page smoke: V13 view returned HTTP 200.
 - Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v13-hypercomplex-semantic-analysis.png`
+
+## 2026-05-24 V13 Existing `.s1` SQLite Fallback
+
+Confirmed the repo-local V2/V3/V4 `.s1` archives are empty, but an older populated archive exists at:
+
+- `H:\TRASGONET\netracer\data\state\s1-archive.sqlite`
+
+Added a non-destructive V13 source resolver:
+
+- live runtime archive is used first when it has packets
+- otherwise V13 selects the richest known `.s1` SQLite candidate
+- fallback archive is opened read-only
+- `V13_S1_ARCHIVE_DB` can override candidates with semicolon-separated paths
+- the V13 HUD/API disclose the archive source and fallback path
+
+Verification:
+
+- `node --check src\v13-s1-archive-source.js`
+- `node --check src\server.js`
+- `node --test test\v13-s1-archive-source.test.js test\v13-hypercomplex-semantic-analysis.test.js` => 2 passed, 0 failed
+- `npm test` => 56 passed, 0 failed
+- API smoke: `/api/v13/hypercomplex-semantic-analysis?hours=720` returned `source=fallback-readonly`, `fallback=H:\TRASGONET\netracer\data\state\s1-archive.sqlite`, and over 134k archive packets.
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v13-hypercomplex-semantic-analysis-fallback.png`

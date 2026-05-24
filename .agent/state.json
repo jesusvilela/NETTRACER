@@ -1,19 +1,26 @@
 {
   "task": "V13 hypercomplex semantic analysis",
-  "status": "verified",
+  "status": "verified-fallback-archive",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
   "latest_verification": {
     "syntax": [
+      "node --check src\\v13-s1-archive-source.js",
       "node --check src\\v13-hypercomplex-semantic-analysis.js",
       "node --check src\\server.js"
     ],
-    "focused_test": "node --test test\\v13-hypercomplex-semantic-analysis.test.js",
+    "focused_test": "node --test test\\v13-s1-archive-source.test.js test\\v13-hypercomplex-semantic-analysis.test.js",
     "full_test": "npm test",
-    "full_test_result": "55 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v13/hypercomplex-semantic-analysis?hours=720 exposes read-only strata, motifs, semantic graph, substrate readout, and human readout",
-    "page_smoke": "http://127.0.0.1:8790/v13/hypercomplex-semantic-analysis returns 200 and renders the WebGL semantic lens",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v13-hypercomplex-semantic-analysis.png",
+    "full_test_result": "56 passed, 0 failed",
+    "api_smoke": "http://127.0.0.1:8790/api/v13/hypercomplex-semantic-analysis?hours=720 exposes read-only fallback archive source H:\\TRASGONET\\netracer\\data\\state\\s1-archive.sqlite when runtime archive is empty",
+    "page_smoke": "http://127.0.0.1:8790/v13/hypercomplex-semantic-analysis returns 200 and renders populated WebGL semantic lens from fallback-readonly archive",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v13-hypercomplex-semantic-analysis-fallback.png",
+    "s1_archive_source": {
+      "mode": "fallback-readonly",
+      "path": "H:\\TRASGONET\\netracer\\data\\state\\s1-archive.sqlite",
+      "observed_packet_count": 134210,
+      "repo_local_archives": "empty at data-v2/data-v3/data-v4 state archives"
+    },
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",

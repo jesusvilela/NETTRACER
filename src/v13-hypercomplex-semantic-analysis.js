@@ -10,6 +10,7 @@ export function buildV13HypercomplexSemanticAnalysis({
   archiveStatus = null,
   archiveInsights = null,
   recentPackets = [],
+  archiveSource = null,
   topology = null,
   traffic = []
 } = {}) {
@@ -23,7 +24,7 @@ export function buildV13HypercomplexSemanticAnalysis({
   const strata = buildStrata({ quantitative, qualitative, packetCount, nodeCount, edgeCount, trafficCount });
   const motifs = buildMotifs(qualitative);
   const semanticGraph = buildSemanticGraph({ strata, motifs, qualitative, topology, recentPackets });
-  const substrate = buildSubstrateReadout({ archiveStatus, insights, recentPackets, topology, traffic });
+  const substrate = buildSubstrateReadout({ archiveStatus, insights, recentPackets, archiveSource, topology, traffic });
   const dominant = strata.slice().sort((a, b) => b.energy - a.energy)[0] || strata[0];
   const activeRemainder = round(clamp(
     1 - (qualitative.signedRatio || 0) * 0.24 - (qualitative.proofRatio || 0) * 0.18 + (motifs.length / 80),
@@ -192,7 +193,7 @@ function buildSemanticGraph({ strata, motifs, qualitative, topology, recentPacke
   };
 }
 
-function buildSubstrateReadout({ archiveStatus, insights, recentPackets, topology, traffic }) {
+function buildSubstrateReadout({ archiveStatus, insights, recentPackets, archiveSource, topology, traffic }) {
   const quantitative = insights.quantitative || {};
   const qualitative = insights.qualitative || {};
   return {
@@ -207,6 +208,8 @@ function buildSubstrateReadout({ archiveStatus, insights, recentPackets, topolog
     topology_nodes: Array.isArray(topology?.nodes) ? topology.nodes.length : 0,
     topology_edges: Array.isArray(topology?.edges) ? topology.edges.length : 0,
     traffic_events: Array.isArray(traffic) ? traffic.length : 0,
+    source: archiveSource?.source || archiveStatus?.source || "runtime",
+    fallback_path: archiveSource?.fallbackPath || "",
     read_only: true
   };
 }

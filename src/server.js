@@ -21,6 +21,7 @@ import { buildV10SignStabilizedFibers } from "./v10-sign-stabilized-fibers.js";
 import { buildV11ActiveCognitionInstrument } from "./v11-active-cognition-instrument.js";
 import { buildV12AaaWorldGenerator } from "./v12-aaa-world-generator.js";
 import { buildV13HypercomplexSemanticAnalysis } from "./v13-hypercomplex-semantic-analysis.js";
+import { resolveV13ArchiveSource } from "./v13-s1-archive-source.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -231,16 +232,12 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/api/v13/hypercomplex-semantic-analysis") {
         const hours = Number(url.searchParams.get("hours") || 168);
+        const archiveSource = resolveV13ArchiveSource({ archive, hours });
         return sendJson(response, 200, buildV13HypercomplexSemanticAnalysis({
-          archiveStatus: archive?.getStatus?.() || null,
-          archiveInsights: archive?.getInsights?.({
-            windowHours: hours,
-            bucketCount: 32,
-            sampleLimit: 18,
-            decodeLimit: 220,
-            topLimit: 12
-          }) || null,
-          recentPackets: archive?.getRecent?.(48) || [],
+          archiveStatus: archiveSource.archiveStatus,
+          archiveInsights: archiveSource.archiveInsights,
+          recentPackets: archiveSource.recentPackets,
+          archiveSource,
           topology: controlPlane.getTopology(),
           traffic: traceStore.getTraffic()
         }));
