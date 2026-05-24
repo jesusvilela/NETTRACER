@@ -20,6 +20,7 @@ import { buildV9NetworkGrowthCosmos } from "./v9-network-growth-cosmos.js";
 import { buildV10SignStabilizedFibers } from "./v10-sign-stabilized-fibers.js";
 import { buildV11ActiveCognitionInstrument } from "./v11-active-cognition-instrument.js";
 import { buildV12AaaWorldGenerator } from "./v12-aaa-world-generator.js";
+import { buildV13HypercomplexSemanticAnalysis } from "./v13-hypercomplex-semantic-analysis.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -225,6 +226,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
           topology: controlPlane.getTopology(),
           meshCount: url.searchParams.get("n") || 7,
           seed: url.searchParams.get("seed") || "spinner-hand-world"
+        }));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/v13/hypercomplex-semantic-analysis") {
+        const hours = Number(url.searchParams.get("hours") || 168);
+        return sendJson(response, 200, buildV13HypercomplexSemanticAnalysis({
+          archiveStatus: archive?.getStatus?.() || null,
+          archiveInsights: archive?.getInsights?.({
+            windowHours: hours,
+            bucketCount: 32,
+            sampleLimit: 18,
+            decodeLimit: 220,
+            topLimit: 12
+          }) || null,
+          recentPackets: archive?.getRecent?.(48) || [],
+          topology: controlPlane.getTopology(),
+          traffic: traceStore.getTraffic()
         }));
       }
 
@@ -489,6 +507,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/v12/aaa-world-generator") {
         const filePath = path.resolve("./src/v12-aaa-world-generator.html");
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          response.writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store, must-revalidate"
+          });
+          response.end(content);
+        } catch (e) {
+          console.error(`[ERR] Failed to serve ${url.pathname}:`, e.message);
+          response.writeHead(404);
+          response.end(`${url.pathname} not found`);
+        }
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/v13/hypercomplex-semantic-analysis") {
+        const filePath = path.resolve("./src/v13-hypercomplex-semantic-analysis.html");
         try {
           const content = await fs.promises.readFile(filePath, "utf8");
           response.writeHead(200, {

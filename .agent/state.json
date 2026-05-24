@@ -1,19 +1,19 @@
 {
-  "task": "V12 AAA world generator immersive quality pass",
+  "task": "V13 hypercomplex semantic analysis",
   "status": "verified",
   "workspace": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer",
   "live_port": 8790,
   "latest_verification": {
     "syntax": [
-      "node --check src\\v12-aaa-world-generator.js",
+      "node --check src\\v13-hypercomplex-semantic-analysis.js",
       "node --check src\\server.js"
     ],
-    "focused_test": "node --test test\\v12-aaa-world-generator.test.js",
+    "focused_test": "node --test test\\v13-hypercomplex-semantic-analysis.test.js",
     "full_test": "npm test",
-    "full_test_result": "54 passed, 0 failed",
-    "api_smoke": "http://127.0.0.1:8790/api/v12/aaa-world-generator?n=7 exposes enlarged terrain, denser life, culture, cosmos towers, walker, and narrator",
-    "page_smoke": "http://127.0.0.1:8790/v12/aaa-world-generator returns 200 and renders the richer first-person WebGL world",
-    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v12-aaa-world-generator-quality-pass.png",
+    "full_test_result": "55 passed, 0 failed",
+    "api_smoke": "http://127.0.0.1:8790/api/v13/hypercomplex-semantic-analysis?hours=720 exposes read-only strata, motifs, semantic graph, substrate readout, and human readout",
+    "page_smoke": "http://127.0.0.1:8790/v13/hypercomplex-semantic-analysis returns 200 and renders the WebGL semantic lens",
+    "screenshot": "H:\\TRASGONET\\NETTRACER_V_3_DEV\\netracer\\data-v4\\logs\\v13-hypercomplex-semantic-analysis.png",
     "launched": [
       "http://127.0.0.1:8787/",
       "http://127.0.0.1:8788/cognition",
@@ -26,7 +26,8 @@
       "http://127.0.0.1:8790/v9/network-growth-cosmos",
       "http://127.0.0.1:8790/v10/sign-stabilized-fibers",
       "http://127.0.0.1:8790/v11/active-cognition-instrument",
-      "http://127.0.0.1:8790/v12/aaa-world-generator"
+      "http://127.0.0.1:8790/v12/aaa-world-generator",
+      "http://127.0.0.1:8790/v13/hypercomplex-semantic-analysis"
     ]
   }
 }

@@ -237,3 +237,22 @@ Verification:
 - `npm test` => 54 passed, 0 failed
 - Page smoke: V12 view returned HTTP 200.
 - Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v12-aaa-world-generator-quality-pass.png`
+
+## 2026-05-24 V13 Hypercomplex Semantic Analysis
+
+Added V13 as a read-only hypercomplex semantic lens over `.s1` archive/substrate signals:
+
+- `/api/v13/hypercomplex-semantic-analysis?hours=<n>`: reads archive status, archive insights, recent packets, topology, and traffic; writes nothing.
+- `/v13/hypercomplex-semantic-analysis`: WebGL semantic analysis view with hypercomplex strata, semantic motifs, packet/topology nodes, gluing arcs, labels, and normal-human explanatory readout.
+- Adapts the older `/s1` Chomsky-style idea into the current carrier stack: `R`, `C`, `H`, `O`, and `A_n`.
+- If the archive has no decoded `.s1` packets, V13 exposes that plainly and falls back to topology/substrate structure instead of inventing motifs.
+
+Verification:
+
+- `node --check src\v13-hypercomplex-semantic-analysis.js`
+- `node --check src\server.js`
+- `node --test test\v13-hypercomplex-semantic-analysis.test.js`
+- `npm test` => 55 passed, 0 failed
+- API smoke: V13 API returned HTTP 200.
+- Page smoke: V13 view returned HTTP 200.
+- Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v13-hypercomplex-semantic-analysis.png`

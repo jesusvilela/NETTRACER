@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRACER V13 Hypercomplex Semantic Analysis</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #02050a; color: #f4fbff; font-family: Inter, Segoe UI, sans-serif; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    .panel { position: fixed; z-index: 5; border: 1px solid rgba(139,231,255,.25); background: rgba(3,10,15,.72); backdrop-filter: blur(14px); box-shadow: 0 16px 60px rgba(0,0,0,.32); }
+    .left { top: 18px; left: 18px; width: min(470px, calc(100vw - 36px)); max-height: calc(100vh - 36px); overflow: hidden; padding: 16px 18px; }
+    .right { top: 18px; right: 18px; width: min(430px, calc(100vw - 36px)); max-height: calc(100vh - 120px); overflow: hidden; padding: 16px 18px; }
+    .bottom { left: 18px; bottom: 18px; width: min(920px, calc(100vw - 36px)); padding: 14px 18px; }
+    .title { font-size: 17px; font-weight: 950; margin-bottom: 9px; }
+    .kicker { color: #9af3ff; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+    .row { display: flex; justify-content: space-between; gap: 14px; font-size: 12px; line-height: 1.55; color: #bcd1d9; }
+    .value { color: #fff; text-align: right; max-width: 66%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stratum { margin: 10px 0; padding: 9px 10px; border-left: 4px solid #78e9ff; background: rgba(255,255,255,.035); }
+    .bar { height: 5px; margin-top: 7px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, #72efff, #ffc45d); }
+    .motif { margin: 8px 0; padding: 8px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.035); font-size: 12px; line-height: 1.35; }
+    .motif strong { color: #ffc45d; display: block; margin-bottom: 3px; }
+    .readout { color: #d9eef4; font-size: 13px; line-height: 1.45; }
+    .dock { position: fixed; z-index: 8; right: 18px; bottom: 18px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 36px); }
+    .dock a, .dock button { border: 0; padding: 10px 12px; color: #061018; background: #8ee7ff; font-weight: 900; font-size: 12px; text-decoration: none; cursor: pointer; }
+    .dock button.active { background: #ffc45d; }
+    .label { position: fixed; z-index: 4; transform: translate(-50%, -50%); padding: 3px 6px; border: 1px solid rgba(147,236,255,.3); background: rgba(2,7,12,.68); color: #fff; font-size: 10px; font-weight: 850; pointer-events: none; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="labels"></div>
+  <section class="panel left">
+    <div class="kicker">Read-only .s1 + substrate lens</div>
+    <div class="title">V13 Hypercomplex Semantic Analysis</div>
+    <div class="row"><span>dominant carrier</span><span class="value" id="dominant">-</span></div>
+    <div class="row"><span>semantic energy</span><span class="value" id="energy">-</span></div>
+    <div class="row"><span>gluing / remainder</span><span class="value" id="gluing">-</span></div>
+    <div class="row"><span>archive packets</span><span class="value" id="packets">-</span></div>
+    <div class="row"><span>nodes / traffic</span><span class="value" id="substrate">-</span></div>
+    <div id="strata"></div>
+  </section>
+  <section class="panel right">
+    <div class="kicker">Semantic motifs</div>
+    <div class="title">Readable Structures</div>
+    <div id="motifs"></div>
+  </section>
+  <section class="panel bottom">
+    <div class="kicker">Normal-human readout</div>
+    <div class="readout" id="readout">Loading semantic field.</div>
+  </section>
+  <nav class="dock">
+    <a href="/s1">S1</a>
+    <a href="/v12/aaa-world-generator">V12</a>
+    <button id="labelsButton" class="active">Labels</button>
+    <button id="refresh">Refresh</button>
+  </nav>
+  <script>
+    const canvas = document.getElementById("gl");
+    const gl = canvas.getContext("webgl", { antialias: true, alpha: false, depth: true });
+    if (!gl) document.body.innerHTML = "<p>WebGL unavailable.</p>";
+    const labels = document.getElementById("labels");
+    let state = null, time = 0, yaw = 0.68, pitch = -0.18, distance = 84, showLabels = true, dragging = false, lx = 0, ly = 0;
+    const carrierColor = { R:[.84,.94,1], C:[.34,1,.9], H:[1,.64,.36], O:[.58,.72,1], A_n:[1,.84,.28], meaning:[.92,.52,1], traffic:[.28,.86,1] };
+    const vs = `
+      attribute vec3 position; attribute vec3 color;
+      uniform mat4 mvp; uniform float pointScale;
+      varying vec3 vColor;
+      void main(){ vColor=color; gl_Position=mvp*vec4(position,1.0); gl_PointSize=pointScale/max(.25,gl_Position.w); }
+    `;
+    const fsLine = `precision mediump float; varying vec3 vColor; void main(){ gl_FragColor=vec4(vColor,1.0); }`;
+    const fsPoint = `
+      precision mediump float; varying vec3 vColor;
+      void main(){ vec2 p=gl_PointCoord*2.0-1.0; float d=dot(p,p); if(d>1.0) discard; float g=1.0-smoothstep(.04,1.0,d); gl_FragColor=vec4(vColor*(.48+g*1.9),1.0); }
+    `;
+    const lineProgram = program(vs, fsLine), pointProgram = program(vs, fsPoint);
+    const lineBuffer = gl.createBuffer(), pointBuffer = gl.createBuffer();
+
+    async function load() {
+      const response = await fetch("/api/v13/hypercomplex-semantic-analysis?hours=720", { cache: "no-store" });
+      state = await response.json();
+      updateHud();
+    }
+
+    function updateHud() {
+      document.getElementById("dominant").textContent = `${state.hypercomplex_semantics.dominant_carrier} / ${state.hypercomplex_semantics.dominant_label}`;
+      document.getElementById("energy").textContent = state.hypercomplex_semantics.total_semantic_energy;
+      document.getElementById("gluing").textContent = `${state.hypercomplex_semantics.gluing_quality} / ${state.hypercomplex_semantics.active_remainder}`;
+      document.getElementById("packets").textContent = state.substrate.archive_packets;
+      document.getElementById("substrate").textContent = `${state.substrate.topology_nodes} nodes / ${state.substrate.traffic_events} events`;
+      document.getElementById("strata").innerHTML = state.hypercomplex_semantics.strata.map((s) => `<div class="stratum"><strong>${esc(s.id)} · ${esc(s.label)}</strong><div>${esc(s.role)}</div><div class="bar"><div class="fill" style="width:${Math.max(4, s.normalized*100)}%"></div></div><div>${s.evidence.map(esc).join(" · ")}</div></div>`).join("");
+      document.getElementById("motifs").innerHTML = state.motifs.length ? state.motifs.map((m) => `<div class="motif"><strong>${esc(m.carrier)} · ${esc(m.stage)} · ${esc(m.label)}</strong>${esc(m.interpretation)}</div>`).join("") : "<div class='motif'>No decoded motifs yet. Archive more .s1 traffic to populate this layer.</div>";
+      document.getElementById("readout").innerHTML = state.human_readout.map(esc).join("<br>");
+    }
+
+    function frame() {
+      resize(); time += 0.016;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.clearColor(0.002, 0.008, 0.017, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      if (!state) return requestAnimationFrame(frame);
+      const projection = perspective(58 * Math.PI / 180, canvas.width / Math.max(1, canvas.height), .08, 320);
+      const eye = [Math.cos(yaw)*Math.cos(pitch)*distance, Math.sin(pitch)*distance + 8, Math.sin(yaw)*Math.cos(pitch)*distance];
+      const vp = multiply(projection, lookAt(eye, [0, 0, 0], [0, 1, 0]));
+      drawSemanticField(vp);
+      updateLabels(vp);
+      requestAnimationFrame(frame);
+    }
+
+    function drawSemanticField(vp) {
+      const lines = [], points = [];
+      const nodes = state.semantic_graph.nodes || [];
+      const byId = Object.fromEntries(nodes.map((node) => [node.id, node]));
+      for (const edge of state.semantic_graph.edges || []) {
+        const a = byId[edge.from], b = byId[edge.to];
+        if (!a || !b) continue;
+        const ac = color(a.carrier), bc = color(b.carrier);
+        pushArc(lines, a.position, b.position, edge.strength || .5, ac, bc);
+      }
+      for (const node of nodes) {
+        const p = orbit(node.position, node.type);
+        const c = color(node.carrier);
+        points.push(p[0], p[1], p[2], c[0], c[1], c[2]);
+        if (node.type === "stratum") pushHalo(lines, p, 2.5 + node.energy * .015, c);
+      }
+      draw(lineProgram, lineBuffer, lines, gl.LINE_STRIP, vp, 1);
+      draw(pointProgram, pointBuffer, points, gl.POINTS, vp, 160);
+    }
+
+    function pushArc(out, a, b, strength, ac, bc) {
+      const steps = 16;
+      for (let i = 0; i <= steps; i++) {
+        const u = i / steps;
+        const s = Math.sin(u * Math.PI);
+        const p = [a[0]*(1-u)+b[0]*u, a[1]*(1-u)+b[1]*u + s * (5 + strength * 8), a[2]*(1-u)+b[2]*u];
+        const c = [ac[0]*(1-u)+bc[0]*u, ac[1]*(1-u)+bc[1]*u, ac[2]*(1-u)+bc[2]*u];
+        out.push(p[0], p[1], p[2], c[0], c[1], c[2]);
+      }
+    }
+    function pushHalo(out, p, radius, c) {
+      for (let i = 0; i <= 40; i++) {
+        const a = i / 40 * Math.PI * 2 + time * .05;
+        out.push(p[0] + Math.cos(a) * radius, p[1] + Math.sin(a * 2) * .4, p[2] + Math.sin(a) * radius, c[0], c[1], c[2]);
+      }
+    }
+    function orbit(p, type) {
+      const spin = type === "packet" ? .035 : type === "motif" ? -.025 : .012;
+      const a = time * spin;
+      return [p[0]*Math.cos(a)-p[2]*Math.sin(a), p[1] + Math.sin(time + p[0]) * .3, p[0]*Math.sin(a)+p[2]*Math.cos(a)];
+    }
+    function updateLabels(vp) {
+      labels.innerHTML = "";
+      if (!showLabels || !state) return;
+      state.semantic_graph.nodes.filter((node) => node.type === "stratum" || node.type === "motif").slice(0, 24).forEach((node) => {
+        const p = project(orbit(node.position, node.type), vp);
+        if (!p || p[2] < -1 || p[2] > 1) return;
+        const el = document.createElement("div");
+        el.className = "label";
+        el.textContent = node.type === "stratum" ? `${node.carrier}: ${node.label}` : node.label.slice(0, 48);
+        el.style.left = `${(p[0]*.5+.5)*innerWidth}px`;
+        el.style.top = `${(-p[1]*.5+.5)*innerHeight}px`;
+        labels.appendChild(el);
+      });
+    }
+    function color(carrier) { return carrierColor[carrier] || [.82,.9,1]; }
+    function draw(prog, buffer, data, mode, mvp, pointScale) {
+      if (!data.length) return;
+      gl.useProgram(prog); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW);
+      const pos = gl.getAttribLocation(prog, "position"), col = gl.getAttribLocation(prog, "color");
+      gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos, 3, gl.FLOAT, false, 24, 0);
+      gl.enableVertexAttribArray(col); gl.vertexAttribPointer(col, 3, gl.FLOAT, false, 24, 12);
+      gl.uniformMatrix4fv(gl.getUniformLocation(prog, "mvp"), false, new Float32Array(mvp));
+      gl.uniform1f(gl.getUniformLocation(prog, "pointScale"), pointScale || 1);
+      gl.drawArrays(mode, 0, data.length / 6);
+    }
+    function program(vsSrc, fsSrc){ const p=gl.createProgram(), v=shader(gl.VERTEX_SHADER,vsSrc), f=shader(gl.FRAGMENT_SHADER,fsSrc); gl.attachShader(p,v); gl.attachShader(p,f); gl.linkProgram(p); if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p; }
+    function shader(type, src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+    function resize(){ const d=devicePixelRatio||1,w=Math.floor(innerWidth*d),h=Math.floor(innerHeight*d); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+    function perspective(fovy, aspect, near, far){ const f=1/Math.tan(fovy/2), nf=1/(near-far); return [f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0]; }
+    function lookAt(eye, center, up){ const z=norm([eye[0]-center[0],eye[1]-center[1],eye[2]-center[2]]), x=norm(cross(up,z)), y=cross(z,x); return [x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]; }
+    function multiply(a,b){ const o=new Array(16).fill(0); for(let r=0;r<4;r++)for(let c=0;c<4;c++)for(let k=0;k<4;k++)o[c*4+r]+=a[k*4+r]*b[c*4+k]; return o; }
+    function project(p,m){ const x=p[0],y=p[1],z=p[2],w=m[3]*x+m[7]*y+m[11]*z+m[15]; if(w<=0) return null; return [(m[0]*x+m[4]*y+m[8]*z+m[12])/w,(m[1]*x+m[5]*y+m[9]*z+m[13])/w,(m[2]*x+m[6]*y+m[10]*z+m[14])/w]; }
+    function norm(a){ const l=Math.hypot(...a)||1; return a.map(v=>v/l); }
+    function cross(a,b){ return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]; }
+    function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+    function esc(value){ return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[ch])); }
+    canvas.addEventListener("pointerdown", (e) => { dragging = true; lx = e.clientX; ly = e.clientY; });
+    window.addEventListener("pointerup", () => dragging = false);
+    window.addEventListener("pointermove", (e) => { if (!dragging) return; yaw += (e.clientX-lx)*.006; pitch = Math.max(-1.2, Math.min(.8, pitch + (e.clientY-ly)*.004)); lx=e.clientX; ly=e.clientY; });
+    canvas.addEventListener("wheel", (e) => { e.preventDefault(); distance = Math.max(28, Math.min(160, distance + e.deltaY*.05)); }, { passive: false });
+    document.getElementById("labelsButton").onclick = () => { showLabels = !showLabels; labelsButton.classList.toggle("active", showLabels); };
+    document.getElementById("refresh").onclick = load;
+    load().then(frame);
+  </script>
+</body>
+</html>
