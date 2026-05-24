@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NetTracer Substrate Foundation</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #03070a; color: #edf8ff; font-family: Inter, Segoe UI, system-ui, sans-serif; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .panel { position: fixed; left: 18px; top: 18px; width: min(620px, calc(100vw - 36px)); background: rgba(4, 18, 22, .84); border: 1px solid rgba(120, 225, 255, .42); box-shadow: 0 0 32px rgba(49, 190, 255, .14); padding: 18px 20px; backdrop-filter: blur(14px); }
+    h1 { margin: 0 0 10px; font-size: 19px; line-height: 1.2; }
+    .statement { margin: 0 0 14px; color: #cce7ec; line-height: 1.45; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; font-size: 13px; }
+    .label { color: #8ec8d5; }
+    .value { color: #fff; text-align: right; font-weight: 700; overflow-wrap: anywhere; }
+    .ladder { position: fixed; left: 18px; right: 18px; bottom: 18px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+    button { border: 0; color: #031115; background: #84e8ff; font-weight: 800; padding: 13px 16px; cursor: pointer; }
+    .versions { display: grid; grid-template-columns: repeat(13, minmax(44px, 1fr)); gap: 7px; }
+    .version { min-height: 48px; border: 1px solid rgba(132, 232, 255, .34); background: rgba(5, 24, 28, .78); color: #dff9ff; font-weight: 800; }
+    .version.active { background: #ffc857; color: #171003; border-color: #ffd98b; }
+    .readout { position: fixed; right: 18px; top: 18px; width: min(470px, calc(100vw - 36px)); background: rgba(4, 18, 22, .84); border: 1px solid rgba(120, 225, 255, .34); padding: 16px 18px; backdrop-filter: blur(14px); }
+    .carrier { display: grid; grid-template-columns: 42px 1fr 74px; gap: 10px; align-items: center; margin: 8px 0; font-size: 13px; }
+    .bar { height: 8px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, #84e8ff, #ffc857); }
+    .hint { position: fixed; right: 18px; bottom: 90px; color: #b7d8df; font-size: 13px; background: rgba(4, 18, 22, .7); border: 1px solid rgba(120, 225, 255, .24); padding: 10px 12px; }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <section class="panel">
+    <h1>NetTracer Traffic Capture Foundation</h1>
+    <p class="statement" id="statement">Resolving substrate capture basis.</p>
+    <div class="grid">
+      <div class="label">selected version</div><div class="value" id="selected">-</div>
+      <div class="label">traffic window</div><div class="value" id="traffic">-</div>
+      <div class="label">topology</div><div class="value" id="topology">-</div>
+      <div class="label">archive packets</div><div class="value" id="archive">-</div>
+      <div class="label">archive source</div><div class="value" id="source">-</div>
+      <div class="label">movement rule</div><div class="value" id="movement">-</div>
+    </div>
+  </section>
+  <section class="readout">
+    <h1>Dominance Trace</h1>
+    <div id="carriers"></div>
+  </section>
+  <section class="ladder">
+    <button id="left">Left</button>
+    <div class="versions" id="versions"></div>
+    <button id="right">Right</button>
+  </section>
+  <div class="hint">Left lowers projection complexity. Right increases richness. Space toggles orbit speed.</div>
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    let state = null;
+    let selected = new URL(location.href).searchParams.get("v") || "V13";
+    let fast = true;
+    let t = 0;
+
+    async function load() {
+      const response = await fetch(`/api/substrate/foundation?v=${encodeURIComponent(selected)}`, { cache: "no-store" });
+      state = await response.json();
+      selected = state.selected_version.id;
+      renderHud();
+    }
+
+    function renderHud() {
+      document.getElementById("statement").textContent = state.telos.statement;
+      document.getElementById("selected").textContent = `${state.selected_version.id} · ${state.selected_version.role}`;
+      document.getElementById("traffic").textContent = `${state.traffic_basis.traffic_events_window} events`;
+      document.getElementById("topology").textContent = `${state.traffic_basis.topology_nodes} nodes / ${state.traffic_basis.topology_edges} edges`;
+      document.getElementById("archive").textContent = state.traffic_basis.archive.packet_count;
+      document.getElementById("source").textContent = state.traffic_basis.archive.source === "fallback-readonly" ? state.traffic_basis.archive.fallback_path : state.traffic_basis.archive.source;
+      document.getElementById("movement").textContent = state.capture_contract.movement_rule;
+      document.getElementById("versions").innerHTML = state.version_ladder.map((v) => `<button class="version ${v.id === selected ? "active" : ""}" data-id="${v.id}">${v.id}<br><small>${v.carrier}</small></button>`).join("");
+      document.getElementById("carriers").innerHTML = state.traffic_basis.dominance_trace.carriers.map((c) => {
+        const width = Math.min(100, c.energy / Math.max(1, state.traffic_basis.dominance_trace.total_energy) * 240);
+        return `<div class="carrier"><strong>${c.carrier}</strong><div><div>${esc(c.source)}</div><div class="bar"><div class="fill" style="width:${width}%"></div></div></div><strong>${c.energy}</strong></div>`;
+      }).join("");
+      document.querySelectorAll(".version").forEach((button) => button.onclick = () => { selected = button.dataset.id; load(); });
+    }
+
+    document.getElementById("left").onclick = () => move(-1);
+    document.getElementById("right").onclick = () => move(1);
+    addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") move(-1);
+      if (event.key === "ArrowRight") move(1);
+      if (event.code === "Space") fast = !fast;
+    });
+
+    function move(delta) {
+      if (!state) return;
+      const index = state.version_ladder.findIndex((v) => v.id === selected);
+      const next = state.version_ladder[Math.max(0, Math.min(state.version_ladder.length - 1, index + delta))];
+      if (next) { selected = next.id; load(); }
+    }
+
+    function resize() {
+      canvas.width = innerWidth * devicePixelRatio;
+      canvas.height = innerHeight * devicePixelRatio;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    }
+    addEventListener("resize", resize);
+    resize();
+
+    function draw() {
+      requestAnimationFrame(draw);
+      t += fast ? 0.012 : 0.004;
+      const w = innerWidth, h = innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      const cx = w * .54, cy = h * .52;
+      const maxR = Math.min(w, h) * .36;
+      const ladder = state?.version_ladder || [];
+      const selectedIndex = Math.max(0, ladder.findIndex((v) => v.id === selected));
+      drawField(cx, cy, maxR, selectedIndex, ladder.length || 13);
+      drawBridges(cx, cy, maxR, ladder, selectedIndex);
+      drawTraffic(cx, cy, maxR);
+    }
+
+    function drawField(cx, cy, maxR, selectedIndex, count) {
+      for (let ring = 0; ring < count; ring += 1) {
+        const r = maxR * (.16 + ring / count * .9);
+        const phase = t * (0.5 + ring * .04);
+        ctx.beginPath();
+        for (let i = 0; i <= 240; i += 1) {
+          const a = i / 240 * Math.PI * 2;
+          const warp = Math.sin(a * 3 + phase) * 10 + Math.cos(a * 5 - phase) * 6;
+          const x = cx + Math.cos(a + phase * .1) * (r + warp);
+          const y = cy + Math.sin(a - phase * .12) * (r * .42 + warp * .3);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = ring === selectedIndex ? "rgba(255,200,87,.92)" : "rgba(93,202,255,.22)";
+        ctx.lineWidth = ring === selectedIndex ? 2.6 : 1.2;
+        ctx.stroke();
+      }
+    }
+
+    function drawBridges(cx, cy, maxR, ladder, selectedIndex) {
+      ladder.forEach((version, index) => {
+        const a = -Math.PI * .9 + index / Math.max(1, ladder.length - 1) * Math.PI * 1.8;
+        const r = maxR * (.22 + index / Math.max(1, ladder.length) * .78);
+        const x = cx + Math.cos(a + t * .05) * r;
+        const y = cy + Math.sin(a) * r * .5;
+        ctx.beginPath();
+        ctx.arc(x, y, index === selectedIndex ? 12 : 7, 0, Math.PI * 2);
+        ctx.fillStyle = index === selectedIndex ? "#ffc857" : carrierColor(version.carrier);
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = index === selectedIndex ? 25 : 12;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#eefdff";
+        ctx.font = "700 12px Inter, Segoe UI";
+        ctx.fillText(version.id, x + 14, y + 4);
+      });
+    }
+
+    function drawTraffic(cx, cy, maxR) {
+      const pulses = Math.max(5, Math.min(80, state?.traffic_basis?.traffic_events_window || 18));
+      for (let i = 0; i < pulses; i += 1) {
+        const a = i * 2.399 + t * (1 + i % 5 * .08);
+        const r = maxR * (.1 + ((i * 17) % 100) / 100 * .85);
+        const x = cx + Math.cos(a) * r;
+        const y = cy + Math.sin(a * 1.3) * r * .5;
+        ctx.beginPath();
+        ctx.arc(x, y, 2 + (i % 4), 0, Math.PI * 2);
+        ctx.fillStyle = i % 3 === 0 ? "#84e8ff" : i % 3 === 1 ? "#ffc857" : "#f38bff";
+        ctx.fill();
+      }
+    }
+
+    function carrierColor(carrier) {
+      return ({ R:"#e8fbff", C:"#84e8ff", H:"#ff9f5a", O:"#a8b7ff", A_n:"#ffc857" })[carrier] || "#cdf";
+    }
+
+    function esc(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+    }
+
+    load();
+    setInterval(load, 3500);
+    draw();
+  </script>
+</body>
+</html>

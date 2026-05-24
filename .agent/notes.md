@@ -279,3 +279,26 @@ Verification:
 - `npm test` => 56 passed, 0 failed
 - API smoke: `/api/v13/hypercomplex-semantic-analysis?hours=720` returned `source=fallback-readonly`, `fallback=H:\TRASGONET\netracer\data\state\s1-archive.sqlite`, and over 134k archive packets.
 - Render screenshot: `H:\TRASGONET\NETTRACER_V_3_DEV\netracer\data-v4\logs\v13-hypercomplex-semantic-analysis-fallback.png`
+
+## 2026-05-24 Substrate Foundation
+
+Added a shared non-destructive traffic-capture foundation for the whole NetTracer version manifold:
+
+- `/api/substrate/foundation`: read-only JSON contract for the substrate basis
+- `/substrate/foundation`: live canvas surface for the interconnection as one virtual space
+- V1-V13 version ladder with left/right movement semantics
+- traffic basis over `traceStore.traffic`, `traceStore.packets`, `controlPlane.topology`, and `.s1` archive source
+- bridge contract preserving packet identity, archive provenance, traffic count, topology reference, and active remainder
+- dominance-trace readout over R/C/H/O/A_n with `total_cognitive_energy`
+
+Verification:
+
+- `node --check src\substrate-foundation.js`
+- `node --check src\server.js`
+- `node --test test\substrate-foundation.test.js test\v13-s1-archive-source.test.js` => 2 passed, 0 failed
+- `npm test` => 57 passed, 0 failed
+- Restarted V4+ host on `http://127.0.0.1:8790/`
+- Route smoke: V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, and `/substrate/foundation` returned HTTP 200.
+- API smoke: `/api/substrate/foundation?v=V13&hours=720` returned 13 versions, `source=fallback-readonly`, over 137k archive packets, and dominant carrier `A_n`.
+
+Render caveat: in-app Browser was not exposed and bundled Playwright was missing `playwright-core`, so screenshot automation could not run in this environment for the new page.

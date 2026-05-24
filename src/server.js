@@ -22,6 +22,7 @@ import { buildV11ActiveCognitionInstrument } from "./v11-active-cognition-instru
 import { buildV12AaaWorldGenerator } from "./v12-aaa-world-generator.js";
 import { buildV13HypercomplexSemanticAnalysis } from "./v13-hypercomplex-semantic-analysis.js";
 import { resolveV13ArchiveSource } from "./v13-s1-archive-source.js";
+import { buildSubstrateFoundation } from "./substrate-foundation.js";
 
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
@@ -240,6 +241,17 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
           archiveSource,
           topology: controlPlane.getTopology(),
           traffic: traceStore.getTraffic()
+        }));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/substrate/foundation") {
+        const hours = Number(url.searchParams.get("hours") || 168);
+        const archiveSource = resolveV13ArchiveSource({ archive, hours });
+        return sendJson(response, 200, buildSubstrateFoundation({
+          traffic: traceStore.getTraffic(),
+          topology: controlPlane.getTopology(),
+          archiveSource,
+          selectedVersion: url.searchParams.get("v") || "V13"
         }));
       }
 
@@ -521,6 +533,23 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       if (request.method === "GET" && url.pathname === "/v13/hypercomplex-semantic-analysis") {
         const filePath = path.resolve("./src/v13-hypercomplex-semantic-analysis.html");
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          response.writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store, must-revalidate"
+          });
+          response.end(content);
+        } catch (e) {
+          console.error(`[ERR] Failed to serve ${url.pathname}:`, e.message);
+          response.writeHead(404);
+          response.end(`${url.pathname} not found`);
+        }
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/substrate/foundation") {
+        const filePath = path.resolve("./src/substrate-foundation.html");
         try {
           const content = await fs.promises.readFile(filePath, "utf8");
           response.writeHead(200, {
