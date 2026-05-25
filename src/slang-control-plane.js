@@ -64,17 +64,18 @@ export class SlangControlPlane {
     this.filePath = path.join(config.stateDir, "slang-control-plane.json");
     this.packDir = path.join(config.stateDir, "slang-packs");
     fs.mkdirSync(this.packDir, { recursive: true });
+    this.lastPersistError = null;
     this.state = this.loadState();
     this.bootstrapPack();
     if (this.config.integrationRoots?.topostrasgo) {
-      this.bootstrapToposTragoNodes({ root: this.config.integrationRoots.topostrasgo, quiet: true });
+      this.safeBootstrap("topostrago", () => this.bootstrapToposTragoNodes({ root: this.config.integrationRoots.topostrasgo, quiet: true }));
     }
     if (this.config.integrationRoots?.utai || this.config.integrationRoots?.igbundle) {
-      this.bootstrapCoreLearners({
+      this.safeBootstrap("core-learners", () => this.bootstrapCoreLearners({
         utaiRoot: this.config.integrationRoots?.utai || DEFAULT_UTAI_ROOT,
         igbundleRoot: this.config.integrationRoots?.igbundle || DEFAULT_IGBUNDLE_ROOT,
         quiet: true
-      });
+      }));
     }
     if (this.traceStore?.events?.on) {
       this.traceStore.events.on("topology", (topology) => {
@@ -82,6 +83,21 @@ export class SlangControlPlane {
       });
     }
     this.syncTopology(this.controlPlane.getTopology(), "boot");
+  }
+
+  safeBootstrap(name, operation) {
+    try {
+      return operation();
+    } catch (error) {
+      this.traceStore?.addAudit?.({
+        type: "slang-bootstrap-degraded",
+        timestamp: Date.now(),
+        bootstrap: name,
+        error: error?.message || String(error),
+        code: error?.code || "UNKNOWN"
+      });
+      return null;
+    }
   }
 
   loadState() {
@@ -102,8 +118,24 @@ export class SlangControlPlane {
 
   persist(nextState = this.state) {
     nextState.lastUpdated = new Date().toISOString();
-    writeJsonFileSafely(this.filePath, nextState);
     this.state = nextState;
+    try {
+      writeJsonFileSafely(this.filePath, nextState);
+      this.lastPersistError = null;
+    } catch (error) {
+      this.lastPersistError = {
+        message: error?.message || String(error),
+        code: error?.code || "UNKNOWN",
+        timestamp: new Date().toISOString()
+      };
+      this.traceStore?.addAudit?.({
+        type: "slang-control-plane-persist-degraded",
+        timestamp: Date.now(),
+        error: this.lastPersistError.message,
+        code: this.lastPersistError.code,
+        filePath: this.filePath
+      });
+    }
     
     // Sync all nodes (including substrates and topostrago nodes) to hyperbolic reservoir
     const topology = this.getAugmentedTopology();
@@ -146,6 +178,11 @@ export class SlangControlPlane {
       topology,
       cognitive: this.getCognitiveSnapshot({ persist: false, limit: 48 }),
       lastCarrierInspection: this.state.lastCarrierInspection,
+      persistence: {
+        filePath: this.filePath,
+        degraded: Boolean(this.lastPersistError),
+        lastError: this.lastPersistError
+      },
       sourceCandidates: packSourceCandidates()
     };
   }
@@ -770,8 +807,10 @@ export class SlangControlPlane {
     return inspection;
   }
 
-  buildGraphMap({ nodeId = "", section = "all", fiber = "all", bundle = "all", kind = "all", direction = "all", limit = 48 } = {}) {
-    const topology = this.getAugmentedTopology();
+  buildGraphMap({ nodeId = "", section = "all", fiber = "all", bundle = "all", kind = "all", direction = "all", limit = 48, topology: inputTopology = null } = {}) {
+    const fallbackTopology = this.controlPlane?.getTopology?.() || { nodes: [], edges: [] };
+    const topologySource = Array.isArray(inputTopology?.nodes) && inputTopology.nodes.length > 0 ? inputTopology : fallbackTopology;
+    const topology = this.getAugmentedTopology(topologySource);
     const activePack = this.getActivePack();
     const selectedNodeId = String(nodeId || topology.nodes.find((node) => node.kind === "runtime")?.id || "netracer");
     const nodeIndex = new Map((topology.nodes || []).map((node) => [String(node.id), node]));
@@ -839,7 +878,66 @@ export class SlangControlPlane {
       weight: Number((0.84 + (index % 5) * 0.05).toFixed(3))
     }));
 
-    const allStrands = [...strands, ...messageStrands]
+    const strandPacketIds = new Set(strands.map((strand) => strand.packetId).filter(Boolean));
+    const trafficStrands = traffic
+      .slice(-Math.max(80, Number(limit) * 4))
+      .filter((entry) => !entry?.packetId || !strandPacketIds.has(entry.packetId))
+      .filter((entry) => selectedNodeId === "netracer"
+        || String(entry?.route || "") === selectedNodeId
+        || String(entry?.clientId || "") === selectedNodeId
+        || String(entry?.scope || "") === selectedNodeId)
+      .map((entry, index) => {
+        const routeId = String(entry?.route || entry?.clientId || selectedNodeId);
+        const routeNode = nodeIndex.get(routeId) || selectedNode;
+        const strandSection = entry?.direction === "FROM_SUBSTRATE" ? "return"
+          : entry?.direction === "TO_SUBSTRATE" ? "execution"
+            : "admission";
+        const strandDirection = entry?.direction === "FROM_SUBSTRATE" ? "reverse" : "forward";
+        const method = entry?.method ? `${entry.method} ` : "";
+        const pathText = entry?.path || entry?.route || entry?.scope || "live";
+        return {
+          id: `traffic_${entry?.timestamp || Date.now()}_${index}_${shortHash(`${routeId}:${pathText}:${entry?.direction || ""}`)}`,
+          packetId: entry?.packetId || null,
+          section: strandSection,
+          fiber: "semantic",
+          bundle: routeNode.kind === "model" ? "model" : routeNode.kind === "broker" ? "broker" : "runtime",
+          kind: entry?.event || entry?.direction || "traffic",
+          direction: strandDirection,
+          route: routeId,
+          label: `§LIVE{${entry?.direction || "TRAFFIC"}:${routeId}}`,
+          content: summarizeSectionText(`${method}${pathText} ${entry?.statusCode || ""} ${entry?.clientId || ""}`.trim(), 220),
+          tags: ["§LIVE", `§ROUTE:${routeId}`, `§DIR:${strandDirection}`],
+          timestamp: entry?.timestamp ? new Date(entry.timestamp).toISOString() : new Date().toISOString(),
+          weight: Number((0.7 + (index % 7) * 0.035).toFixed(3))
+        };
+      });
+
+    const topologyStrands = (Array.isArray(topology.edges) ? topology.edges : [])
+      .filter((edge) => selectedNodeId === "netracer"
+        || String(edge?.from || "") === selectedNodeId
+        || String(edge?.to || "") === selectedNodeId)
+      .map((edge, index) => {
+        const routeId = String(edge?.to || edge?.from || selectedNodeId);
+        const routeNode = nodeIndex.get(routeId) || selectedNode;
+        const edgeKind = String(edge?.kind || "route");
+        return {
+          id: `topology_${index}_${shortHash(`${edge?.from || ""}:${edge?.to || ""}:${edgeKind}`)}`,
+          packetId: null,
+          section: edgeKind === "bind" ? "proof" : "admission",
+          fiber: edgeKind === "bind" ? "strict" : "semantic",
+          bundle: routeNode.kind === "model" ? "model" : routeNode.kind === "broker" ? "broker" : "runtime",
+          kind: `topology-${edgeKind}`,
+          direction: String(edge?.from || "") === selectedNodeId ? "forward" : "reverse",
+          route: routeId,
+          label: `§LINK{${edge?.from || "?"}->${edge?.to || "?"}:${edgeKind}}`,
+          content: summarizeSectionText(`live topology edge ${edge?.from || "?"} -> ${edge?.to || "?"} kind=${edgeKind}`, 220),
+          tags: ["§TOPOLOGY", `§EDGE:${edgeKind}`, `§ROUTE:${routeId}`],
+          timestamp: new Date().toISOString(),
+          weight: Number((0.62 + Math.min(0.28, Number(edge?.priority || 0) / 400) + (index % 5) * 0.025).toFixed(3))
+        };
+      });
+
+    const allStrands = [...strands, ...messageStrands, ...trafficStrands, ...topologyStrands]
       .filter((strand) => strandPassesFilters(strand, { section, fiber, bundle, kind, direction }))
       .slice(-Math.max(1, Number(limit) || 48));
 
@@ -888,6 +986,13 @@ export class SlangControlPlane {
         negotiated: Boolean(this.state.nodeBindings?.[String(node.id)]),
         inboxCount: Number((this.state.nodeInboxes?.[String(node.id)] || []).length),
         peerCount: Number(this.state.nodePeerMaps?.[String(node.id)]?.peers?.length || 0)
+      })),
+      edges: (topology.edges || []).map((edge) => ({
+        from: String(edge?.from || ""),
+        to: String(edge?.to || ""),
+        kind: String(edge?.kind || "route"),
+        healthy: typeof edge?.healthy === "boolean" ? edge.healthy : null,
+        priority: Number.isFinite(Number(edge?.priority)) ? Number(edge.priority) : null
       })),
       metrics: {
         forwardCount,
@@ -1214,10 +1319,15 @@ function collectSlangSourceFiles(root, limit = 400) {
 
 function collectRelativeFilesBounded(root, predicate, limit, currentDir = root, bucket = []) {
   if (bucket.length >= limit) return bucket;
-  const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  let entries = [];
+  try {
+    entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  } catch {
+    return bucket;
+  }
   for (const entry of entries) {
     if (bucket.length >= limit) break;
-    if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "__pycache__") continue;
+    if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "__pycache__" || entry.name === ".pytest_cache") continue;
     const absolutePath = path.join(currentDir, entry.name);
     const relativePath = path.relative(root, absolutePath);
     if (entry.isDirectory()) {
@@ -2011,8 +2121,14 @@ function findManifestFiles(root) {
 }
 
 function collectRelativeFiles(root, predicate, currentDir = root, bucket = []) {
-  const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  let entries = [];
+  try {
+    entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  } catch {
+    return bucket;
+  }
   for (const entry of entries) {
+    if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "__pycache__" || entry.name === ".pytest_cache") continue;
     const absolutePath = path.join(currentDir, entry.name);
     const relativePath = path.relative(root, absolutePath);
     if (entry.isDirectory()) {

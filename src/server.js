@@ -737,12 +737,15 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/api/slang/topology") {
-        await broker.getStatusSummary();
-        return sendJson(response, 200, slangControlPlane.getTopologySnapshot());
+        const summary = await broker.getStatusSummary(false, { allowStale: true }).catch(() => null);
+        const topology = Array.isArray(summary?.topology?.nodes) && summary.topology.nodes.length > 0
+          ? summary.topology
+          : controlPlane.getTopology();
+        return sendJson(response, 200, slangControlPlane.getTopologySnapshot(topology));
       }
 
       if (request.method === "GET" && url.pathname === "/api/slang/control-plane") {
-        await broker.getStatusSummary();
+        await broker.getStatusSummary(false, { allowStale: true }).catch(() => null);
         return sendJson(response, 200, slangControlPlane.getStatus());   
       }
 
@@ -803,7 +806,10 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/api/slang/graph") {
-        await broker.getStatusSummary();
+        const summary = await broker.getStatusSummary(false, { allowStale: true }).catch(() => null);
+        const topology = Array.isArray(summary?.topology?.nodes) && summary.topology.nodes.length > 0
+          ? summary.topology
+          : controlPlane.getTopology();
         return sendJson(response, 200, slangControlPlane.buildGraphMap({ 
           nodeId: String(url.searchParams.get("node") || ""),
           section: String(url.searchParams.get("section") || "all"),     
@@ -811,7 +817,8 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
           bundle: String(url.searchParams.get("bundle") || "all"),       
           kind: String(url.searchParams.get("kind") || "all"),
           direction: String(url.searchParams.get("direction") || "all"), 
-          limit: Number(url.searchParams.get("limit") || 48)
+          limit: Number(url.searchParams.get("limit") || 48),
+          topology
         }));
       }
 

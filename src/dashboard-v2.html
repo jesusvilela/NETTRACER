@@ -622,25 +622,27 @@
       });
       try {
         const query = buildQuery(state.selectedNodeId || 'netracer');
-        state.graph = await fetchJson(`/api/slang/graph?${query.toString()}`, { timeoutMs: 15000 });
+        state.graph = normalizeGraphPayload(await fetchJson(`/api/slang/graph?${query.toString()}`, { timeoutMs: 15000 }));
       } catch (error) {
         if (String(state.selectedNodeId || 'netracer') !== 'netracer') {
           state.selectedNodeId = 'netracer';
           const nodeSelect = document.getElementById('node-select');
           if (nodeSelect) nodeSelect.value = state.selectedNodeId;
           const fallbackQuery = buildQuery('netracer');
-          state.graph = await fetchJson(`/api/slang/graph?${fallbackQuery.toString()}`, { timeoutMs: 15000 });
+          state.graph = normalizeGraphPayload(await fetchJson(`/api/slang/graph?${fallbackQuery.toString()}`, { timeoutMs: 15000 }));
           const summary = document.getElementById('summary');
           if (summary) summary.textContent = `graph fallback from timed out node to netracer`;
         } else {
           throw error;
         }
       }
-      if (!state.selectedStrandId || !state.graph.strands.some((s) => s.id === state.selectedStrandId)) {
-        state.selectedStrandId = state.graph.strands[0]?.id || '';
+      const graphStrands = state.graph?.strands || [];
+      const graphMessages = state.graph?.messages || [];
+      if (!state.selectedStrandId || !graphStrands.some((s) => s.id === state.selectedStrandId)) {
+        state.selectedStrandId = graphStrands[0]?.id || '';
       }
-      if (!state.selectedMessageId || !state.graph.messages.some((m) => m.id === state.selectedMessageId)) {
-        state.selectedMessageId = state.graph.messages[0]?.id || '';
+      if (!state.selectedMessageId || !graphMessages.some((m) => m.id === state.selectedMessageId)) {
+        state.selectedMessageId = graphMessages[0]?.id || '';
       }
       if (ui.ws?.readyState === WebSocket.OPEN) {
         ui.ws.send(JSON.stringify({ type: 'subscribe', nodeIds: [state.selectedNodeId] }));
@@ -1114,10 +1116,15 @@
       const fwd = graph?.metrics?.forwardCount || 0;
       const rev = graph?.metrics?.reverseCount || 0;
       const total = Math.max(1, fwd + rev);
-      const omega = Math.min(1.5, 0.18 + 0.65 * (fwd / total));
-      const theta = Math.atan2(rev - fwd, total) * 0.6;
+      const omega = Number.isFinite(fwd) && Number.isFinite(total)
+        ? Math.min(1.5, 0.18 + 0.65 * (fwd / total))
+        : 0.18;
+      const theta = Number.isFinite(rev) && Number.isFinite(fwd) && Number.isFinite(total)
+        ? Math.atan2(rev - fwd, total) * 0.6
+        : 0;
       // ingress-hyperbolic curvature lands at -1..-2.5; show |c|
-      const curvature = Math.abs(graph?.curvature ?? graph?.metrics?.curvature ?? 1.0);
+      const curvatureValue = Math.abs(Number(graph?.curvature ?? graph?.metrics?.curvature ?? 1.0));
+      const curvature = Number.isFinite(curvatureValue) ? curvatureValue : 1.0;
       return { omega, theta, curvature };
     }
 
@@ -2559,6 +2566,35 @@
       }
     }
 
+    function normalizeGraphPayload(raw = {}) {
+      const graph = raw && typeof raw === 'object' ? raw : {};
+      const metrics = graph.metrics && typeof graph.metrics === 'object' ? graph.metrics : {};
+      return {
+        ...graph,
+        generatedAt: graph.generatedAt || new Date().toISOString(),
+        selectedNodeId: graph.selectedNodeId || state.selectedNodeId || 'netracer',
+        selectedNode: graph.selectedNode || { id: graph.selectedNodeId || state.selectedNodeId || 'netracer', kind: 'runtime', label: graph.selectedNodeId || state.selectedNodeId || 'netracer' },
+        sections: Array.isArray(graph.sections) ? graph.sections : [],
+        strands: Array.isArray(graph.strands) ? graph.strands : [],
+        messages: Array.isArray(graph.messages) ? graph.messages : [],
+        nodes: Array.isArray(graph.nodes) ? graph.nodes : [],
+        edges: Array.isArray(graph.edges) ? graph.edges : [],
+        reservoirBundles: Array.isArray(graph.reservoirBundles) ? graph.reservoirBundles : [],
+        layerComposition: Array.isArray(graph.layerComposition) ? graph.layerComposition : [],
+        packPipeline: graph.packPipeline && typeof graph.packPipeline === 'object' ? graph.packPipeline : { flow: [] },
+        metrics: {
+          forwardCount: Number(metrics.forwardCount || 0),
+          reverseCount: Number(metrics.reverseCount || 0),
+          strandCount: Number(metrics.strandCount || 0),
+          messageCount: Number(metrics.messageCount || 0),
+          connectedBundleCount: Number(metrics.connectedBundleCount || 0),
+          activeLayerCount: Number(metrics.activeLayerCount || 0),
+          dominantFiber: metrics.dominantFiber || '-',
+          curvature: Number.isFinite(Number(metrics.curvature)) ? Number(metrics.curvature) : 1
+        }
+      };
+    }
+
     function restoreCachedViewState() {
       try {
         const raw = localStorage.getItem(V2_BOOT_CACHE_KEY);
@@ -2574,7 +2610,7 @@
         state.runtime = cached.runtime || state.runtime;
         state.control = cached.control || state.control;
         state.catalog = cached.catalog || state.catalog;
-        state.graph = cached.graph || state.graph;
+        state.graph = cached.graph ? normalizeGraphPayload(cached.graph) : state.graph;
         if (state.runtime) renderSelects();
         if (state.graph || state.runtime) renderAll();
         else draw();
