@@ -1549,12 +1549,11 @@
     function drawPacketPulses(ctx, scene, time, profile, trafficField) {
       const recent = (state.packets || []).slice(-holo.pulseLimit);
       if (recent.length === 0) return 0;
-      const map = new Map(scene.nodes.map((node) => [node.id, node]));
+      const index = sceneNodeIndex(scene);
       let pulses = 0;
       for (let i = 0; i < recent.length; i += 1) {
         const packet = recent[i];
-        const route = String(packet?.payload?.route || "");
-        const node = map.get(route);
+        const node = resolvePacketNode(packet, index, i);
         if (!node) continue;
         const phase = (time * profile.pulseSpeed + i * 0.31) % 1;
         const excitation = nodeExcitation(node.id, trafficField);
@@ -1642,6 +1641,7 @@
     function buildTrafficField(scene, packets, time) {
       const nodeStrength = new Map();
       const routeStrength = new Map();
+      const index = sceneNodeIndex(scene);
       const recent = Array.isArray(packets) ? packets.slice(-Math.max(32, holo.pulseLimit * 3)) : [];
       const fallback = topRoute(recent);
       for (let i = 0; i < recent.length; i += 1) {
@@ -1654,16 +1654,89 @@
         const kindWeight = kind === "execution" ? 1.34 : kind === "proof" ? 1.18 : kind === "route-plan" ? 1.1 : 1;
         const pulse = (0.26 + freshness * 0.92) * semanticWeight * kindWeight;
         routeStrength.set(route, (routeStrength.get(route) || 0) + pulse);
+        const node = resolvePacketNode(packet, index, i, fallback);
+        if (node) nodeStrength.set(node.id, (nodeStrength.get(node.id) || 0) + pulse);
       }
-      const peak = Math.max(1, ...routeStrength.values(), 1);
+      const peak = Math.max(1, ...routeStrength.values(), ...nodeStrength.values(), 1);
       for (const node of scene.nodes) {
-        const direct = routeStrength.get(node.id) || routeStrength.get(node.label) || 0;
+        const direct = nodeStrength.get(node.id) || routeStrength.get(node.id) || routeStrength.get(node.label) || 0;
         const shell = Math.max(0, 1 - Math.abs(node.radial - 0.58) * 1.7);
         const harmonic = 0.5 + 0.5 * Math.sin(time * 1.3 + hashUnit(node.id) * Math.PI * 2);
         const normalized = direct / peak;
         nodeStrength.set(node.id, clamp(normalized * 0.82 + shell * 0.08 + harmonic * 0.1, 0, 1.35));
       }
       return { nodeStrength, routeStrength, peak };
+    }
+
+    function sceneNodeIndex(scene) {
+      const nodes = Array.isArray(scene?.nodes) ? scene.nodes : [];
+      const exact = new Map();
+      const normalized = new Map();
+      const byKind = new Map();
+      for (const node of nodes) {
+        exact.set(String(node.id), node);
+        for (const key of [node.id, node.label]) {
+          const text = normalizeSignalKey(key);
+          if (text) normalized.set(text, node);
+        }
+        const kind = String(node.kind || "node");
+        if (!byKind.has(kind)) byKind.set(kind, []);
+        byKind.get(kind).push(node);
+      }
+      return { nodes, exact, normalized, byKind };
+    }
+
+    function resolvePacketNode(packet, index, ordinal = 0, fallbackRoute = "") {
+      if (!index?.nodes?.length) return null;
+      for (const key of packetSignalKeys(packet, fallbackRoute)) {
+        const text = String(key || "");
+        if (index.exact.has(text)) return index.exact.get(text);
+        const normalized = normalizeSignalKey(text);
+        if (normalized && index.normalized.has(normalized)) return index.normalized.get(normalized);
+        if (normalized) {
+          const fuzzy = index.nodes.find((node) => normalizeSignalKey(node.id).includes(normalized) || normalizeSignalKey(node.label).includes(normalized));
+          if (fuzzy) return fuzzy;
+        }
+      }
+      const payload = packet?.payload || {};
+      const model = String(packet?.model || payload.model || "");
+      const client = String(packet?.clientId || payload.clientId || "");
+      if (/broker|substrate|fallback/i.test(model) && index.byKind.get("broker")?.length) {
+        return pickStableNode(index.byKind.get("broker"), `${model}:${ordinal}`);
+      }
+      if (client && index.byKind.get("client")?.length) {
+        return pickStableNode(index.byKind.get("client"), `${client}:${ordinal}`);
+      }
+      return pickStableNode(index.byKind.get("runtime") || index.nodes, `${model}:${client}:${packet?.id || ordinal}`);
+    }
+
+    function packetSignalKeys(packet, fallbackRoute = "") {
+      const payload = packet?.payload || {};
+      const route = packet?.route || payload.route || fallbackRoute || "";
+      const model = packet?.model || payload.model || "";
+      const client = packet?.clientId || payload.clientId || "";
+      return [
+        route,
+        model,
+        client,
+        packet?.id,
+        payload.id,
+        payload.runtime,
+        payload.provider,
+        model ? `model:${model}` : "",
+        client ? `client:${client}` : "",
+        route ? `route:${route}` : ""
+      ].filter(Boolean);
+    }
+
+    function normalizeSignalKey(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+
+    function pickStableNode(nodes, seed) {
+      const list = Array.isArray(nodes) ? nodes.filter(Boolean) : [];
+      if (!list.length) return null;
+      return list[Math.floor(hashUnit(String(seed || "packet")) * list.length) % list.length];
     }
 
     function nodeExcitation(nodeId, trafficField) {
