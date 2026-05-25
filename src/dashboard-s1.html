@@ -312,6 +312,30 @@
       }
     }
 
+    function textOr(value, fallback) {
+      const text = String(value ?? '').trim();
+      return text && text !== 'undefined' && text !== 'null' ? text : fallback;
+    }
+
+    function shortId(value, fallback = 'unlabelled') {
+      const text = textOr(value, fallback);
+      return text.length > 18 ? `${text.slice(0, 10)}…${text.slice(-6)}` : text;
+    }
+
+    function trafficLabel(data = {}) {
+      const src = textOr(data.src || data.clientId || data.promptType || data.direction, 'nettracer');
+      const dst = textOr(data.dst || data.route || data.model || data.routeHint, 'substrate');
+      const kind = textOr(data.packetType || data.direction || data.event || 'traffic', 'traffic');
+      return `Packet: ${shortId(src)} -> ${shortId(dst)} [${kind} · L1 Salience]`;
+    }
+
+    function traceLabel(data = {}) {
+      const packet = data.packet || {};
+      const id = shortId(data.id || data.traceId || packet.id || data.packetId, 'trace-signal');
+      const route = textOr(data.route || packet?.payload?.route || packet.route || data.model, 'unrouted');
+      return `Trace detected: ${id} via ${shortId(route)} in Stratum L2`;
+    }
+
     // --- Data Bridge ---
     async function boot() {
       initThree();
@@ -333,11 +357,11 @@
         const events = new EventSource('/events');
         events.addEventListener('traffic', (e) => {
           const data = JSON.parse(e.data);
-          log(`Packet: ${data.src} â†’ ${data.dst} [L1 Salience]`);
+          log(trafficLabel(data));
         });
         events.addEventListener('trace', (e) => {
           const data = JSON.parse(e.data);
-          log(`Trace detected: ${data.id} in Stratum L2`, 'info');
+          log(traceLabel(data), 'info');
         });
       } catch (e) {
         log("SSE Bridge Failed. Running in offline/hypothetical mode.", 'warn');
