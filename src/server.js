@@ -246,8 +246,12 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/api/substrate/foundation") {
-        const hours = Number(url.searchParams.get("hours") || 168);
-        const archiveSource = resolveV13ArchiveSource({ archive, hours });
+        const archiveStatus = safeArchiveStatus(archive);
+        const archiveSource = {
+          source: archiveStatus?.packetCount > 0 ? "runtime-status" : "runtime-empty",
+          archiveStatus,
+          recentPackets: []
+        };
         return sendJson(response, 200, buildSubstrateFoundation({
           traffic: traceStore.getTraffic(),
           topology: controlPlane.getTopology(),
@@ -1329,6 +1333,25 @@ function shouldTrackClientPresence(request, url) {
   if (/^\/v\d+\//.test(path)) return true;
   if (path === "/v1/chat/completions" || path === "/api/packs/intend" || path === "/v1/models" || path === "/v1/embeddings") return true;
   return path.startsWith("/api/slang/");
+}
+
+function safeArchiveStatus(archive) {
+  try {
+    return archive?.getStatus?.() || {
+      source: "runtime-empty",
+      packetCount: 0,
+      compressionRatio: 1,
+      dbPath: ""
+    };
+  } catch (error) {
+    return {
+      source: "runtime-status-error",
+      packetCount: 0,
+      compressionRatio: 1,
+      dbPath: "",
+      error: error?.message || "archive status unavailable"
+    };
+  }
 }
 
 function routeScope(pathname = "") {
