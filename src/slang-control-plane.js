@@ -1,6 +1,7 @@
 import { TelosValidator } from './telos-validator.js';
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { expandFileToS1, embedS1Carrier } from "./ingress-expander.js";
 import { S1_PACKET_TYPES } from "./packet.js";
@@ -2459,4 +2460,3 @@ function messageSection(message) {
 function messageDirection(message) {
   return message?.direction === "from-node" ? "reverse" : "forward";
 }
-
