@@ -24,6 +24,13 @@ import { buildV13HypercomplexSemanticAnalysis } from "./v13-hypercomplex-semanti
 import { resolveV13ArchiveSource } from "./v13-s1-archive-source.js";
 import { buildSubstrateFoundation } from "./substrate-foundation.js";
 
+const ALLOWED_NNN_PROXY_PATHS = new Set(
+  String(process.env.NNN_PROXY_PATHS || "/health,/status,/knn")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.startsWith("/"))
+);
+
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
   const ingressSseClients = new Set();
@@ -109,13 +116,20 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (url.pathname.startsWith("/api/nnn/")) {
+        requireSession(session);
         const nnnPath = url.pathname.replace("/api/nnn/", "/");
+        if (!ALLOWED_NNN_PROXY_PATHS.has(nnnPath) || !["GET", "POST"].includes(request.method)) {
+          return sendJson(response, 404, { error: "nnn_route_not_found" });
+        }
         const proxyReq = http.request({
           host: "127.0.0.1",
           port: 3030,
           path: nnnPath + (url.search || ""),
           method: request.method,
-          headers: request.headers
+          headers: {
+            "content-type": request.headers["content-type"] || "application/json",
+            "x-netracer-user": session.username
+          }
         }, (proxyRes) => {
           response.writeHead(proxyRes.statusCode, proxyRes.headers);     
           proxyRes.pipe(response);
@@ -129,6 +143,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/ju/absorb") {
+        requireSession(session);
         const body = await readJson(request);
         const result = absorbJuPayload(body, { ip: request.socket.remoteAddress || "127.0.0.1" });
         return sendJson(response, 201, result);
@@ -671,8 +686,9 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         if (!authSession) {
           return sendJson(response, 401, { error: "invalid_credentials" });
         }
-        response.setHeader("Set-Cookie", `netracer_session=${encodeURIComponent(authSession.token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(config.sessionTtlMs / 1000)}`);
-        return sendJson(response, 200, { token: authSession.token, username: authSession.username, role: authSession.role, expiresAt: authSession.expiresAt });
+        const secureCookie = request.socket.encrypted || request.headers["x-forwarded-proto"] === "https" || process.env.COOKIE_SECURE === "true";
+        response.setHeader("Set-Cookie", `netracer_session=${encodeURIComponent(authSession.token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(config.sessionTtlMs / 1000)}${secureCookie ? "; Secure" : ""}`);
+        return sendJson(response, 200, { username: authSession.username, role: authSession.role, expiresAt: authSession.expiresAt });
       }
 
       if (request.method === "POST" && url.pathname === "/api/auth/logout") {
@@ -807,6 +823,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/learners/bootstrap") {
+        requireSession(session);
         const body = await readJson(request);
         const result = slangControlPlane.bootstrapCoreLearners({
           utaiRoot: body.utaiRoot,
@@ -872,9 +889,10 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/packs/upgrade") {
+        requireSession(session);
         const body = await readJson(request);
         const result = slangControlPlane.applyPackUpgrade({
-          sourcePath: body.sourcePath || "",
+          sourcePath: assertAllowedPath(body.sourcePath || "", config, { mustExist: true }),
           nodeIds: body.nodeIds || [],
           actor: session?.username || body.actor || "operator"
         });
@@ -886,19 +904,21 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/multimodal/inspect") {
+        requireSession(session);
         const body = await readJson(request);
         return sendJson(response, 200, slangControlPlane.inspectMultimodal({
-          filePath: body.filePath,
+          filePath: assertAllowedPath(body.filePath || "", config, { mustExist: true }),
           nodeId: body.nodeId || "netracer",
           embedCarrier: body.embedCarrier === true
         }));
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/multimodal/send") {
+        requireSession(session);
         const body = await readJson(request);
         const result = slangControlPlane.sendMultimodal({
           nodeId: body.nodeId,
-          filePath: body.filePath,
+          filePath: assertAllowedPath(body.filePath || "", config, { mustExist: true, writable: true }),
           actor: session?.username || body.actor || "operator",
           embedCarrier: body.embedCarrier !== false
         });
@@ -907,12 +927,13 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && /^\/api\/slang\/nodes\/[^/]+\/receive$/.test(url.pathname)) {
+        requireSession(session);
         const body = await readJson(request);
         const nodeId = decodeURIComponent(url.pathname.split("/")[4] || "");
         const result = slangControlPlane.receiveFromNode({
           nodeId,
           payload: body.payload,
-          filePath: body.filePath || "",
+          filePath: body.filePath ? assertAllowedPath(body.filePath, config, { mustExist: true, writable: true }) : "",
           actor: session?.username || body.actor || nodeId,
           metadata: body.metadata || {}
         });
@@ -1097,6 +1118,11 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         return;
       }
       const session = auth.verify(extractBearerToken(request));
+      if (!session) {
+        socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
+        socket.destroy();
+        return;
+      }
       const clientMeta = buildClientMeta(request, url, session);
       const connection = acceptWebSocket(request, socket, head);
       connection.subscriptions = new Set();
@@ -1181,7 +1207,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
     }
     if (type === "upgradePack") {
       const result = slangControlPlane.applyPackUpgrade({
-        sourcePath: message.sourcePath || "",
+        sourcePath: assertAllowedPath(message.sourcePath || "", config, { mustExist: true }),
         nodeIds: message.nodeIds || [...connection.subscriptions],       
         actor: message.actor || "ws-operator"
       });
@@ -1195,7 +1221,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       sendWs(connection, {
         type: "multimodalInspection",
         inspection: slangControlPlane.inspectMultimodal({
-          filePath: message.filePath,
+          filePath: assertAllowedPath(message.filePath || "", config, { mustExist: true }),
           nodeId: message.nodeId || [...connection.subscriptions][0] || "netracer",
           embedCarrier: message.embedCarrier === true
         })
@@ -1205,7 +1231,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
     if (type === "sendMultimodal") {
       const result = slangControlPlane.sendMultimodal({
         nodeId: message.nodeId || [...connection.subscriptions][0] || "netracer",
-        filePath: message.filePath,
+        filePath: assertAllowedPath(message.filePath || "", config, { mustExist: true, writable: true }),
         actor: message.actor || "ws-operator",
         embedCarrier: message.embedCarrier !== false
       });
@@ -1217,7 +1243,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       const result = slangControlPlane.receiveFromNode({
         nodeId: message.nodeId || [...connection.subscriptions][0] || "netracer",
         payload: message.payload || null,
-        filePath: message.filePath || "",
+        filePath: message.filePath ? assertAllowedPath(message.filePath, config, { mustExist: true, writable: true }) : "",
         actor: message.actor || "ws-remote",
         metadata: message.metadata || {}
       });
@@ -1296,6 +1322,34 @@ function buildEmbedding(input) {
 
 function requireSession(session) {
   if (!session) throw new Error("auth_required");
+}
+
+function assertAllowedPath(value, config, options = {}) {
+  const requested = String(value || "").trim();
+  if (!requested) throw new Error("path_required");
+  const candidate = path.resolve(requested);
+  const roots = [
+    config.dataDir,
+    config.integrationRoots?.utai,
+    config.integrationRoots?.igbundle,
+    config.integrationRoots?.topostrasgo,
+    process.env.SLANG_PACK_SOURCE
+  ].filter(Boolean).map((root) => path.resolve(root));
+  const existing = fs.existsSync(candidate) ? candidate : path.dirname(candidate);
+  const realCandidate = fs.realpathSync(existing);
+  const allowed = roots.some((root) => {
+    const relative = path.relative(root, realCandidate);
+    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  });
+  if (!allowed) throw new Error("path_outside_allowed_roots");
+  if (options.mustExist && !fs.existsSync(candidate)) throw new Error("path_not_found");
+  if (options.writable && !roots.some((root) => {
+    const relative = path.relative(root, realCandidate);
+    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  })) {
+    throw new Error("path_not_writable");
+  }
+  return candidate;
 }
 
 function sendJson(response, statusCode, payload) {
