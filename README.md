@@ -62,7 +62,10 @@ flowchart TD
 
     APK -->|"POST /v1/chat/completions"| NET
     NET -->|"Policy / Auto-Cycle"| SDR
-    NET -->|"Route & Proxy"| LMS & OLL & VLL & CPP
+    NET -->|"Route & Proxy"| LMS
+    NET -->|"Route & Proxy"| OLL
+    NET -->|"Route & Proxy"| VLL
+    NET -->|"Route & Proxy"| CPP
     NET -->|"Sign & Emit Packets"| S1
     NET -->|"Compute Reflection"| CP
 
@@ -107,9 +110,9 @@ flowchart LR
     V3["V3 Fiber<br/>Self-Reflective Object Mesh"]
     V4_13["V4-V13 Cage<br/>Hypercomplex Semantic Analysis"]
 
-    V1 ==>|Non-destructive bridge| V2
-    V2 ==>|Object recognition| V3
-    V3 ==>|Manifold consolidation| V4_13
+    V1 == Non-destructive bridge ==> V2
+    V2 == Object recognition ==> V3
+    V3 == Manifold consolidation ==> V4_13
 
     class V1 v1
     class V2 v2
