@@ -181,7 +181,7 @@ npm install
 # Run the test suite
 npm test
 
-# Start the broker (default bind: 0.0.0.0:8787)
+# Start the broker (default bind: 127.0.0.1:8787)
 npm start
 ```
 
@@ -196,13 +196,13 @@ npm start -- --demo
 # health:    http://127.0.0.1:8787/healthz
 ```
 
-Use `HOST=127.0.0.1` when the broker should remain local-only. Use `PORT=<port>` when the default port is already occupied.
+NETTRACER binds to `127.0.0.1` by default, so a fresh checkout is never reachable from the network. Set `HOST=0.0.0.0` (or a specific LAN address) only when you intend to expose it, and put a TLS-terminating reverse proxy in front before doing so. Use `PORT=<port>` when the default port is already occupied.
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `HOST` | `0.0.0.0` | Bind host IP (`127.0.0.1` for local-only) |
+| `HOST` | `127.0.0.1` | Bind host IP (set to `0.0.0.0` or a LAN address to expose the broker; use a TLS reverse proxy when doing so) |
 | `PORT` | `8787` | HTTP/WebSocket server port |
 | `DATA_DIR` | `data` | Root directory for trace, state, and archive storage |
 | `OPERATOR_PASSKEY` | *(Auto-generated)* | Operator passkey (saved to `data/state/operator-passkey.txt`) |
