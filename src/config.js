@@ -44,7 +44,7 @@ export function loadConfig() {
     packetLimit: toInt(process.env.PACKET_LIMIT, 2000),
     alertLimit: toInt(process.env.ALERT_LIMIT, 200),
     auditLimit: toInt(process.env.AUDIT_LIMIT, 500),
-    debugRequests: process.env.DEBUG_REQUESTS === "true" || true,
+    debugRequests: process.env.DEBUG_REQUESTS === "true",
     probeTtlMs: toInt(process.env.PROBE_TTL_MS, 4000),
     statusSummaryTtlMs: toInt(process.env.STATUS_SUMMARY_TTL_MS, 10000),
     modelListTtlMs: toInt(process.env.MODEL_LIST_TTL_MS, 30000),

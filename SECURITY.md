@@ -6,7 +6,7 @@ If you discover a potential security vulnerability in NETTRACER, please report i
 
 ### Preferred Channel
 
-Please email security reports to **jesusvilela@users.noreply.github.com** or report via GitHub Security Advisories if enabled on the repository.
+Please report vulnerabilities through GitHub Private Vulnerability Reporting / Security Advisories when enabled on the repository. If advisories are unavailable, open a minimal public issue that asks for a private security contact without disclosing exploit details.
 
 ### What to Include
 
