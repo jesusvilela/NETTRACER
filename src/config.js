@@ -29,7 +29,10 @@ export function loadConfig() {
   const config = {
     appName: process.env.APP_NAME || "netracer",
     demoMode: isDemoMode,
-    host: process.env.HOST || "0.0.0.0",
+    // Bind to loopback by default; a network-facing bind is an explicit opt-in
+    // via HOST so a fresh checkout never exposes the operator login over plain
+    // HTTP on the LAN or internet without the operator deciding to do so.
+    host: process.env.HOST || "127.0.0.1",
     port: toInt(process.env.PORT, 8787),
     dataDir,
     traceDir,

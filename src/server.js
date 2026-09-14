@@ -24,6 +24,22 @@ import { buildV13HypercomplexSemanticAnalysis } from "./v13-hypercomplex-semanti
 import { resolveV13ArchiveSource } from "./v13-s1-archive-source.js";
 import { buildSubstrateFoundation } from "./substrate-foundation.js";
 
+const PRIVILEGED_WS_MESSAGE_TYPES = new Set([
+  "upgradePack",
+  "inspectMultimodal",
+  "sendMultimodal",
+  "receiveMultimodal"
+]);
+
+const MAX_WS_BUFFERED_BYTES = 8 * 1024 * 1024; // bounds per-connection memory against slow/oversized frame DoS
+
+const ALLOWED_NNN_PROXY_PATHS = new Set(
+  String(process.env.NNN_PROXY_PATHS || "/health,/status,/knn")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.startsWith("/"))
+);
+
 export function createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane }) {     
   const sseClients = new Set();
   const ingressSseClients = new Set();
@@ -109,13 +125,20 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (url.pathname.startsWith("/api/nnn/")) {
+        requireSession(session);
         const nnnPath = url.pathname.replace("/api/nnn/", "/");
+        if (!ALLOWED_NNN_PROXY_PATHS.has(nnnPath) || !["GET", "POST"].includes(request.method)) {
+          return sendJson(response, 404, { error: "nnn_route_not_found" });
+        }
         const proxyReq = http.request({
           host: "127.0.0.1",
           port: 3030,
           path: nnnPath + (url.search || ""),
           method: request.method,
-          headers: request.headers
+          headers: {
+            "content-type": request.headers["content-type"] || "application/json",
+            "x-netracer-user": session.username
+          }
         }, (proxyRes) => {
           response.writeHead(proxyRes.statusCode, proxyRes.headers);     
           proxyRes.pipe(response);
@@ -129,6 +152,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/ju/absorb") {
+        requireSession(session);
         const body = await readJson(request);
         const result = absorbJuPayload(body, { ip: request.socket.remoteAddress || "127.0.0.1" });
         return sendJson(response, 201, result);
@@ -671,8 +695,9 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         if (!authSession) {
           return sendJson(response, 401, { error: "invalid_credentials" });
         }
-        response.setHeader("Set-Cookie", `netracer_session=${encodeURIComponent(authSession.token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(config.sessionTtlMs / 1000)}`);
-        return sendJson(response, 200, { token: authSession.token, username: authSession.username, role: authSession.role, expiresAt: authSession.expiresAt });
+        const secureCookie = request.socket.encrypted || request.headers["x-forwarded-proto"] === "https" || process.env.COOKIE_SECURE === "true";
+        response.setHeader("Set-Cookie", `netracer_session=${encodeURIComponent(authSession.token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(config.sessionTtlMs / 1000)}${secureCookie ? "; Secure" : ""}`);
+        return sendJson(response, 200, { username: authSession.username, role: authSession.role, expiresAt: authSession.expiresAt });
       }
 
       if (request.method === "POST" && url.pathname === "/api/auth/logout") {
@@ -716,15 +741,18 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/api/archive/status") {
+        requireSession(session);
         return sendJson(response, 200, archive?.getStatus() || null);    
       }
 
       if (request.method === "GET" && url.pathname === "/api/archive/recent") {
+        requireSession(session);
         const limit = Number(url.searchParams.get("limit") || 40);       
         return sendJson(response, 200, { data: archive?.getRecent(limit) || [] });
       }
 
       if (request.method === "GET" && url.pathname === "/api/archive/insights") {
+        requireSession(session);
         return sendJson(response, 200, archive?.getInsights({
           windowHours: Number(url.searchParams.get("hours") || 168),     
           bucketCount: Number(url.searchParams.get("buckets") || 28),    
@@ -735,6 +763,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname.startsWith("/api/archive/packet/")) {
+        requireSession(session);
         const packetId = decodeURIComponent(url.pathname.split("/").pop() || "");
         const packet = archive?.getPacket(packetId);
         if (!packet) return sendJson(response, 404, { error: "archive_packet_not_found" });
@@ -742,10 +771,12 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/api/packets") { 
+        requireSession(session);
         return sendJson(response, 200, { data: traceStore.getPackets() });
       }
 
       if (request.method === "GET" && url.pathname.startsWith("/api/packets/")) {
+        requireSession(session);
         const packetId = decodeURIComponent(url.pathname.split("/").pop() || "");
         if (url.pathname.endsWith("/lineage")) {
           const id = decodeURIComponent(url.pathname.split("/").slice(-2, -1)[0] || "");
@@ -807,6 +838,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/learners/bootstrap") {
+        requireSession(session);
         const body = await readJson(request);
         const result = slangControlPlane.bootstrapCoreLearners({
           utaiRoot: body.utaiRoot,
@@ -818,6 +850,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/meta-learn") {
+        requireSession(session);
         const body = await readJson(request);
         const result = slangControlPlane.runMetaLearningCycle({
           actor: session?.username || body.actor || "operator",
@@ -872,9 +905,10 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/packs/upgrade") {
+        requireSession(session);
         const body = await readJson(request);
         const result = slangControlPlane.applyPackUpgrade({
-          sourcePath: body.sourcePath || "",
+          sourcePath: assertAllowedPath(body.sourcePath || "", config, { mustExist: true }),
           nodeIds: body.nodeIds || [],
           actor: session?.username || body.actor || "operator"
         });
@@ -886,19 +920,21 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/multimodal/inspect") {
+        requireSession(session);
         const body = await readJson(request);
         return sendJson(response, 200, slangControlPlane.inspectMultimodal({
-          filePath: body.filePath,
+          filePath: assertAllowedPath(body.filePath || "", config, { mustExist: true }),
           nodeId: body.nodeId || "netracer",
           embedCarrier: body.embedCarrier === true
         }));
       }
 
       if (request.method === "POST" && url.pathname === "/api/slang/multimodal/send") {
+        requireSession(session);
         const body = await readJson(request);
         const result = slangControlPlane.sendMultimodal({
           nodeId: body.nodeId,
-          filePath: body.filePath,
+          filePath: assertAllowedPath(body.filePath || "", config, { mustExist: true, writable: true }),
           actor: session?.username || body.actor || "operator",
           embedCarrier: body.embedCarrier !== false
         });
@@ -907,12 +943,13 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "POST" && /^\/api\/slang\/nodes\/[^/]+\/receive$/.test(url.pathname)) {
+        requireSession(session);
         const body = await readJson(request);
         const nodeId = decodeURIComponent(url.pathname.split("/")[4] || "");
         const result = slangControlPlane.receiveFromNode({
           nodeId,
           payload: body.payload,
-          filePath: body.filePath || "",
+          filePath: body.filePath ? assertAllowedPath(body.filePath, config, { mustExist: true, writable: true }) : "",
           actor: session?.username || body.actor || nodeId,
           metadata: body.metadata || {}
         });
@@ -931,6 +968,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/events") {      
+        requireSession(session);
         response.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
         response.write("event: ready\ndata: {\"status\":\"streaming\"}\n\n");
         sseClients.add(response);
@@ -939,14 +977,17 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       }
 
       if (request.method === "GET" && url.pathname === "/api/traffic") { 
+        requireSession(session);
         return sendJson(response, 200, { data: traceStore.getTraffic() });
       }
 
       if (request.method === "GET" && url.pathname === "/api/traces") {  
+        requireSession(session);
         return sendJson(response, 200, { data: traceStore.getTraces() });
       }
 
       if (request.method === "GET" && url.pathname === "/api/alerts") {  
+        requireSession(session);
         return sendJson(response, 200, { data: traceStore.getAlerts() });
       }
 
@@ -1084,7 +1125,11 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
       sendJson(response, 404, { error: "not_found" });
     } catch (error) {
-      const statusCode = error?.message === "auth_required" ? 401 : 500; 
+      const statusCode = error?.message === "auth_required" ? 401
+        : error?.message === "payload_too_large" ? 413
+        : error?.message === "path_outside_allowed_roots" || error?.message === "path_not_writable" ? 403
+        : /not_found/.test(error?.message || "") ? 404
+        : 500;
       sendJson(response, statusCode, { error: error.message });
     }
   });
@@ -1096,7 +1141,18 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         socket.destroy();
         return;
       }
-      const session = auth.verify(extractBearerToken(request));
+      if (!isAllowedWsOrigin(request, config)) {
+        socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+      const token = extractBearerToken(request);
+      const session = auth.verify(token);
+      if (!session) {
+        socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
+        socket.destroy();
+        return;
+      }
       const clientMeta = buildClientMeta(request, url, session);
       const connection = acceptWebSocket(request, socket, head);
       connection.subscriptions = new Set();
@@ -1104,6 +1160,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       connection.clientMeta = clientMeta;
       connection.remoteAddress = clientMeta.remoteAddress;
       connection.userAgent = clientMeta.userAgent;
+      connection.authToken = token;
       slangClients.add(connection);
       broker.observeClient(clientMeta, {
         transport: "ws/slang",
@@ -1116,6 +1173,11 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       });
       sendWs(connection, { type: "hello", catalog: slangInterpreter.getCatalog() });
       connection.socket.on("data", (chunk) => {
+        if (connection.buffer.length + chunk.length > MAX_WS_BUFFERED_BYTES) {
+          connection.socket.destroy();
+          slangClients.delete(connection);
+          return;
+        }
         connection.buffer = Buffer.concat([connection.buffer, chunk]);   
         const { messages, remainder } = decodeWsFrames(connection.buffer);
         connection.buffer = remainder;
@@ -1139,6 +1201,15 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
 
   function handleSlangWsMessage(connection, message) {
     const type = String(message?.type || "");
+    if (PRIVILEGED_WS_MESSAGE_TYPES.has(type) && !auth.verify(connection.authToken)) {
+      // The upgrade handshake only checks auth once; re-verify on every
+      // privileged message so an expired or logged-out session cannot keep
+      // performing filesystem/control-plane operations over a live socket.
+      sendWs(connection, { type: "error", error: "auth_required" });
+      connection.socket.destroy();
+      slangClients.delete(connection);
+      return;
+    }
     if (type === "subscribe") {
       for (const nodeId of message.nodeIds || []) connection.subscriptions.add(String(nodeId));
       broker.observeClient(connection.clientMeta || {}, {
@@ -1181,7 +1252,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
     }
     if (type === "upgradePack") {
       const result = slangControlPlane.applyPackUpgrade({
-        sourcePath: message.sourcePath || "",
+        sourcePath: assertAllowedPath(message.sourcePath || "", config, { mustExist: true }),
         nodeIds: message.nodeIds || [...connection.subscriptions],       
         actor: message.actor || "ws-operator"
       });
@@ -1195,7 +1266,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       sendWs(connection, {
         type: "multimodalInspection",
         inspection: slangControlPlane.inspectMultimodal({
-          filePath: message.filePath,
+          filePath: assertAllowedPath(message.filePath || "", config, { mustExist: true }),
           nodeId: message.nodeId || [...connection.subscriptions][0] || "netracer",
           embedCarrier: message.embedCarrier === true
         })
@@ -1205,7 +1276,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
     if (type === "sendMultimodal") {
       const result = slangControlPlane.sendMultimodal({
         nodeId: message.nodeId || [...connection.subscriptions][0] || "netracer",
-        filePath: message.filePath,
+        filePath: assertAllowedPath(message.filePath || "", config, { mustExist: true, writable: true }),
         actor: message.actor || "ws-operator",
         embedCarrier: message.embedCarrier !== false
       });
@@ -1217,7 +1288,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
       const result = slangControlPlane.receiveFromNode({
         nodeId: message.nodeId || [...connection.subscriptions][0] || "netracer",
         payload: message.payload || null,
-        filePath: message.filePath || "",
+        filePath: message.filePath ? assertAllowedPath(message.filePath, config, { mustExist: true, writable: true }) : "",
         actor: message.actor || "ws-remote",
         metadata: message.metadata || {}
       });
@@ -1298,14 +1369,65 @@ function requireSession(session) {
   if (!session) throw new Error("auth_required");
 }
 
+function isAllowedWsOrigin(request, config) {
+  const origin = request.headers.origin;
+  if (!origin) {
+    // Non-browser clients (CLI tools, other services) do not send an Origin
+    // header; only browser-based cross-site WebSocket hijacking relies on it.
+    return true;
+  }
+  const configured = String(process.env.WS_ALLOWED_ORIGINS || "").split(",").map((value) => value.trim()).filter(Boolean);
+  const host = request.headers.host || `${config.host}:${config.port}`;
+  const defaults = [`http://${host}`, `https://${host}`, `http://localhost:${config.port}`, `http://127.0.0.1:${config.port}`];
+  const allowed = new Set([...defaults, ...configured]);
+  return allowed.has(origin);
+}
+
+function assertAllowedPath(value, config, options = {}) {
+  const requested = String(value || "").trim();
+  if (!requested) throw new Error("path_required");
+  const candidate = path.resolve(requested);
+  const roots = [
+    config.dataDir,
+    config.integrationRoots?.utai,
+    config.integrationRoots?.igbundle,
+    config.integrationRoots?.topostrasgo,
+    process.env.SLANG_PACK_SOURCE
+  ].filter(Boolean).map((root) => path.resolve(root));
+  const existing = fs.existsSync(candidate) ? candidate : path.dirname(candidate);
+  const realCandidate = fs.realpathSync(existing);
+  const allowed = roots.some((root) => {
+    const relative = path.relative(root, realCandidate);
+    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  });
+  if (!allowed) throw new Error("path_outside_allowed_roots");
+  if (options.mustExist && !fs.existsSync(candidate)) throw new Error("path_not_found");
+  if (options.writable && !roots.some((root) => {
+    const relative = path.relative(root, realCandidate);
+    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  })) {
+    throw new Error("path_not_writable");
+  }
+  return candidate;
+}
+
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload, null, 2));
 }
 
 async function readJson(request) {
+  const MAX_BODY_BYTES = 10 * 1024 * 1024; // 10MB cap guards against unbounded memory use from oversized bodies.
   const chunks = [];
-  for await (const chunk of request) chunks.push(chunk);
+  let total = 0;
+  for await (const chunk of request) {
+    total += chunk.length;
+    if (total > MAX_BODY_BYTES) {
+      request.destroy();
+      throw new Error("payload_too_large");
+    }
+    chunks.push(chunk);
+  }
   const raw = Buffer.concat(chunks).toString("utf8");
   return raw ? JSON.parse(raw) : {};
 }

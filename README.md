@@ -38,33 +38,41 @@ The visual language is intentionally playful; the runtime contract is intentiona
 ### 1. Topos Broker Flow
 
 ```mermaid
-graph TD
+flowchart TD
     classDef client fill:#101520,stroke:#70ceff,color:#ebf7ff;
     classDef broker fill:#0a121e,stroke:#f0c971,color:#ebf7ff;
     classDef runtime fill:#0d1826,stroke:#89ffd0,color:#ebf7ff;
     classDef storage fill:#150f24,stroke:#ffb5a7,color:#ebf7ff;
 
-    APK["Edge Client<br/><code>§0|BIND http://host:8787</code>"] :::client
-    NET["NETTRACER Broker<br/><code>:8787</code>"] :::broker
+    APK["Edge Client<br/><code>§0|BIND http://host:8787</code>"]
+    NET["NETTRACER Broker<br/><code>:8787</code>"]
 
     subgraph Runtimes["Local Neural Substrates"]
-        LMS["LM Studio<br/><code>:1234</code>"] :::runtime
-        OLL["Ollama<br/><code>:11434</code>"] :::runtime
-        VLL["vLLM<br/><code>:8000</code>"] :::runtime
-        CPP["llama.cpp<br/><code>:8080</code>"] :::runtime
+        LMS["LM Studio<br/><code>:1234</code>"]
+        OLL["Ollama<br/><code>:11434</code>"]
+        VLL["vLLM<br/><code>:8000</code>"]
+        CPP["llama.cpp<br/><code>:8080</code>"]
     end
 
     subgraph Observability["Control Plane & State"]
-        S1[".s1 SQLite Archive<br/><code>s1-archive.sqlite</code>"] :::storage
-        SDR["SDR Channel Matrix"] :::storage
-        CP["Cognitive Memory & Reflect"] :::storage
+        S1[".s1 SQLite Archive<br/><code>s1-archive.sqlite</code>"]
+        SDR["SDR Channel Matrix"]
+        CP["Cognitive Memory & Reflect"]
     end
 
     APK -->|"POST /v1/chat/completions"| NET
     NET -->|"Policy / Auto-Cycle"| SDR
-    NET -->|"Route & Proxy"| LMS & OLL & VLL & CPP
+    NET -->|"Route & Proxy"| LMS
+    NET -->|"Route & Proxy"| OLL
+    NET -->|"Route & Proxy"| VLL
+    NET -->|"Route & Proxy"| CPP
     NET -->|"Sign & Emit Packets"| S1
     NET -->|"Compute Reflection"| CP
+
+    class APK client
+    class NET broker
+    class LMS,OLL,VLL,CPP runtime
+    class S1,SDR,CP storage
 ```
 
 ### 2. `.s1` Packet Lifecycle & Section-Language Pipeline
@@ -92,19 +100,23 @@ sequenceDiagram
 ### 3. Version Manifold (V1 – V13)
 
 ```mermaid
-graph LR
+flowchart LR
     classDef v1 fill:#081420,stroke:#70ceff,color:#ebf7ff;
     classDef v2 fill:#141120,stroke:#f0c971,color:#ebf7ff;
     classDef v3 fill:#0f1c18,stroke:#89ffd0,color:#ebf7ff;
 
-    V1["V1 Fiber<br/>Ingress Traffic & Translate"] :::v1
-    V2["V2 Fiber<br/>Cognition Telemetry & Atlas"] :::v2
-    V3["V3 Fiber<br/>Self-Reflective Object Mesh"] :::v3
-    V4_13["V4-V13 Cage<br/>Hypercomplex Semantic Analysis"] :::v3
+    V1["V1 Fiber<br/>Ingress Traffic & Translate"]
+    V2["V2 Fiber<br/>Cognition Telemetry & Atlas"]
+    V3["V3 Fiber<br/>Self-Reflective Object Mesh"]
+    V4_13["V4-V13 Cage<br/>Hypercomplex Semantic Analysis"]
 
-    V1 ==>|"Non-destructive bridge"| V2
-    V2 ==>|"Object recognition"| V3
-    V3 ==>|"Manifold consolidation"| V4_13
+    V1 == Non-destructive bridge ==> V2
+    V2 == Object recognition ==> V3
+    V3 == Manifold consolidation ==> V4_13
+
+    class V1 v1
+    class V2 v2
+    class V3,V4_13 v3
 ```
 
 ---
@@ -169,7 +181,7 @@ npm install
 # Run the test suite
 npm test
 
-# Start the broker (default bind: 0.0.0.0:8787)
+# Start the broker (default bind: 127.0.0.1:8787)
 npm start
 ```
 
@@ -184,13 +196,13 @@ npm start -- --demo
 # health:    http://127.0.0.1:8787/healthz
 ```
 
-Use `HOST=127.0.0.1` when the broker should remain local-only. Use `PORT=<port>` when the default port is already occupied.
+NETTRACER binds to `127.0.0.1` by default, so a fresh checkout is never reachable from the network. Set `HOST=0.0.0.0` (or a specific LAN address) only when you intend to expose it, and put a TLS-terminating reverse proxy in front before doing so. Use `PORT=<port>` when the default port is already occupied.
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `HOST` | `0.0.0.0` | Bind host IP (`127.0.0.1` for local-only) |
+| `HOST` | `127.0.0.1` | Bind host IP (set to `0.0.0.0` or a LAN address to expose the broker; use a TLS reverse proxy when doing so) |
 | `PORT` | `8787` | HTTP/WebSocket server port |
 | `DATA_DIR` | `data` | Root directory for trace, state, and archive storage |
 | `OPERATOR_PASSKEY` | *(Auto-generated)* | Operator passkey (saved to `data/state/operator-passkey.txt`) |

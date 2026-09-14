@@ -8,6 +8,8 @@ import { ControlPlane } from "../src/control-plane.js";
 import { SlangControlPlane } from "../src/slang-control-plane.js";
 import { buildS1Packet, S1_PACKET_TYPES } from "../src/packet.js";
 
+const PACK_SOURCE = path.resolve(process.cwd(), "test", "fixtures", "slang_packs");
+
 function makeFixture() {
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "netracer-slang-cp-"));
   const packets = [];
@@ -162,7 +164,7 @@ test("SlangControlPlane installs v3 self-compressed pack schema with pipeline me
 
 test("SlangControlPlane builds bidirectional graph map with section cuts and binds", () => {
   const fixture = makeFixture();
-  fixture.plane.applyPackUpgrade({ sourcePath: path.resolve(process.cwd(), "..", "tools", "slang_packs"), nodeIds: [], actor: "tester" });
+  fixture.plane.applyPackUpgrade({ sourcePath: PACK_SOURCE, nodeIds: [], actor: "tester" });
 
   const forward = buildS1Packet({
     packetType: S1_PACKET_TYPES.EXECUTION,
@@ -205,7 +207,7 @@ test("SlangControlPlane builds bidirectional graph map with section cuts and bin
 
 test("SlangControlPlane exposes topology-wide SLANG coverage and prunes stale bindings", () => {
   const fixture = makeFixture();
-  fixture.plane.applyPackUpgrade({ sourcePath: path.resolve(process.cwd(), "..", "tools", "slang_packs"), nodeIds: [], actor: "tester" });
+  fixture.plane.applyPackUpgrade({ sourcePath: PACK_SOURCE, nodeIds: [], actor: "tester" });
 
   const snapshot = fixture.plane.getTopologySnapshot();
   assert.equal(snapshot.metrics.totalNodes, fixture.controlPlane.getTopology().nodes.length);
@@ -231,7 +233,7 @@ test("SlangControlPlane exposes topology-wide SLANG coverage and prunes stale bi
 
 test("SlangControlPlane propagates peer reachability for live nodes", () => {
   const fixture = makeFixture();
-  fixture.plane.applyPackUpgrade({ sourcePath: path.resolve(process.cwd(), "..", "tools", "slang_packs"), nodeIds: [], actor: "tester" });
+  fixture.plane.applyPackUpgrade({ sourcePath: PACK_SOURCE, nodeIds: [], actor: "tester" });
 
   fixture.controlPlane.updateTopology({
     upstreams: [
@@ -263,7 +265,7 @@ test("SlangControlPlane propagates peer reachability for live nodes", () => {
 
 test("SlangControlPlane pack upgrade preserves prior installs instead of deleting them", () => {
   const fixture = makeFixture();
-  const sourcePath = path.resolve(process.cwd(), "..", "tools", "slang_packs");
+  const sourcePath = PACK_SOURCE;
   const first = fixture.plane.applyPackUpgrade({ sourcePath, nodeIds: [], actor: "tester" });
   const second = fixture.plane.applyPackUpgrade({ sourcePath, nodeIds: [], actor: "tester" });
 
@@ -275,7 +277,7 @@ test("SlangControlPlane pack upgrade preserves prior installs instead of deletin
 
 test("SlangControlPlane computes cognitive reflection and persists bounded memory", () => {
   const fixture = makeFixture();
-  fixture.plane.applyPackUpgrade({ sourcePath: path.resolve(process.cwd(), "..", "tools", "slang_packs"), nodeIds: [], actor: "tester" });
+  fixture.plane.applyPackUpgrade({ sourcePath: PACK_SOURCE, nodeIds: [], actor: "tester" });
   fixture.packets.push(buildS1Packet({
     packetType: S1_PACKET_TYPES.AUDIT,
     clientId: "tester",

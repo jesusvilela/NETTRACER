@@ -8,7 +8,7 @@ public sealed class NetracerSupervisorOptions
   public string NodePath { get; set; } = "node";
   public string ChildArguments { get; set; } = "src/index.js";
   public int Port { get; set; } = 8787;
-  public string Host { get; set; } = "0.0.0.0";
+  public string Host { get; set; } = "127.0.0.1";
   public string DataDir { get; set; } = "data";
   public string HealthUrl { get; set; } = "";
   public int PollIntervalSeconds { get; set; } = 15;
@@ -28,7 +28,7 @@ public sealed class NetracerSupervisorOptions
     NodePath = string.IsNullOrWhiteSpace(NodePath) ? "node" : NodePath.Trim();
     ChildArguments = string.IsNullOrWhiteSpace(ChildArguments) ? "src/index.js" : ChildArguments.Trim();
     Port = NormalizeInt(Port, 8787, 1, 65535);
-    Host = string.IsNullOrWhiteSpace(Host) ? "0.0.0.0" : Host.Trim();
+    Host = string.IsNullOrWhiteSpace(Host) ? "127.0.0.1" : Host.Trim();
     DataDir = string.IsNullOrWhiteSpace(DataDir) ? "data" : DataDir.Trim();
     HealthUrl = string.IsNullOrWhiteSpace(HealthUrl) ? $"http://127.0.0.1:{Port}/healthz" : HealthUrl.Trim();
     PollIntervalSeconds = NormalizeInt(PollIntervalSeconds, 15, 3, 300);

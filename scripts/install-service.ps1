@@ -7,7 +7,7 @@ param(
   [string]$PublishDir = "",
   [string]$NodePath = "",
   [int]$Port = 8787,
-  [string]$BindHost = "0.0.0.0",
+  [string]$BindHost = "127.0.0.1",
   [string]$DataDir = "data",
   [int]$PollIntervalSeconds = 15,
   [int]$HealthTimeoutSeconds = 5,
