@@ -4,7 +4,7 @@ import { TelosClient } from "./telos-client.js";
  * High-level validator for SLANG packets using the TELOS engine.
  */
 export class TelosValidator {
-  constructor(baseUrl = "http://localhost:8001") {
+  constructor(baseUrl = process.env.TELOS_BASE_URL || "http://127.0.0.1:8001") {
     this.client = new TelosClient(baseUrl);
   }
 

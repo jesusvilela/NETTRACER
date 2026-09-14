@@ -5,7 +5,7 @@
 Primary source artifact:
 
 ```text
-C:\Users\HAL900\Downloads\Informe analítico para una auto-reflexión rigurosa y un plan de implementación geométrico-hiperdimen.pdf
+Informe analítico para una auto-reflexión rigurosa y un plan de implementación geométrico-hiperdimen.pdf
 ```
 
 Evidence extracted:

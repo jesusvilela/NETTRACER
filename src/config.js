@@ -24,8 +24,11 @@ export function loadConfig() {
   const operatorPasskey = loadOrCreatePasskey(stateDir, process.env.OPERATOR_PASSKEY);
   const signingKey = process.env.S1_SIGNING_KEY || crypto.createHash("sha256").update(`${operatorPasskey}:netracer`).digest("hex");
 
+  const isDemoMode = process.argv.includes("--demo") || process.env.DEMO_MODE === "true";
+
   const config = {
     appName: process.env.APP_NAME || "netracer",
+    demoMode: isDemoMode,
     host: process.env.HOST || "0.0.0.0",
     port: toInt(process.env.PORT, 8787),
     dataDir,
@@ -76,12 +79,12 @@ export function loadConfig() {
       apiUrl: process.env.NNN_API_URL || "http://127.0.0.1:3030",
       port: toInt(process.env.NNN_API_PORT, 3030),
       root: process.env.NNN_RAMDISK_ROOT || "",
-      candidateRoots: readPathList(process.env.NNN_RAMDISK_ROOTS || "H:\\LLM-MANIFOLD\\nnn-hyperbolic-ramdisk")
+      candidateRoots: readPathList(process.env.NNN_RAMDISK_ROOTS || "")
     },
     integrationRoots: {
-      utai: process.env.UTAI_ROOT || "H:\\NP Completeness Bunny UTAI study\\UTAI",
-      igbundle: process.env.IGBUNDLE_ROOT || "H:\\LLM-MANIFOLD\\igbundle-llm",
-      topostrasgo: process.env.TOPOSTRASGO_ROOT || "C:\\Users\\HAL900\\AndroidStudioProjects\\topostrasgo"
+      utai: process.env.UTAI_ROOT || "",
+      igbundle: process.env.IGBUNDLE_ROOT || "",
+      topostrasgo: process.env.TOPOSTRASGO_ROOT || ""
     }
   };
 

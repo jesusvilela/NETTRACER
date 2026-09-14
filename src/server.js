@@ -621,7 +621,7 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
         return;
       }
 
-      if (request.method === "GET" && url.pathname === "/healthz") {     
+      if (request.method === "GET" && (url.pathname === "/healthz" || url.pathname === "/health")) {     
         const force = toBool(url.searchParams.get("refresh"));
         const status = await broker.getStatusSummary(force);
         return sendJson(response, 200, {
@@ -630,6 +630,39 @@ export function createServer({ config, traceStore, broker, telemetry, controlPla
           authConfigured: Boolean(config.operatorPasskey),
           ...status
         });
+      }
+
+      if (request.method === "GET" && url.pathname === "/metrics") {
+        const traffic = traceStore.getTraffic().length;
+        const packets = traceStore.getPackets().length;
+        const topology = controlPlane.getTopology();
+        const nodesCount = topology.nodes ? topology.nodes.length : 0;
+        const mem = process.memoryUsage();
+        const uptime = process.uptime();
+
+        const metricsLines = [
+          `# HELP netracer_uptime_seconds Process uptime in seconds.`,
+          `# TYPE netracer_uptime_seconds counter`,
+          `netracer_uptime_seconds ${uptime.toFixed(2)}`,
+          `# HELP netracer_traffic_total Total traffic records in memory.`,
+          `# TYPE netracer_traffic_total gauge`,
+          `netracer_traffic_total ${traffic}`,
+          `# HELP netracer_packets_total Total packets in memory.`,
+          `# TYPE netracer_packets_total gauge`,
+          `netracer_packets_total ${packets}`,
+          `# HELP netracer_topology_nodes_total Total topology nodes.`,
+          `# TYPE netracer_topology_nodes_total gauge`,
+          `netracer_topology_nodes_total ${nodesCount}`,
+          `# HELP netracer_memory_heap_used_bytes Heap memory used.`,
+          `# TYPE netracer_memory_heap_used_bytes gauge`,
+          `netracer_memory_heap_used_bytes ${mem.heapUsed}`,
+          `# HELP netracer_memory_rss_bytes Resident set size.`,
+          `# TYPE netracer_memory_rss_bytes gauge`,
+          `netracer_memory_rss_bytes ${mem.rss}`
+        ].join("\n") + "\n";
+
+        response.writeHead(200, { "content-type": "text/plain; version=0.0.4; charset=utf-8" });
+        return response.end(metricsLines);
       }
 
       if (request.method === "POST" && url.pathname === "/api/auth/login") {

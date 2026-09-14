@@ -23,11 +23,12 @@ SOFTWARE.
 */
 
 import fs from "node:fs";
-import { resolve } from "node:path";
+import path, { resolve } from "node:path";
 
 const JV_SIGNATURE = [1, 1, -1, -1];
 const CRC32_TABLE = buildCrc32Table();
-const juRamdiskDir = "C:\\nnn-hyperbolic-ramdisk\\target\\nnn-ramdisk";
+const juRamdiskDir = process.env.NNN_RAMDISK_DIR || path.join(process.cwd(), "data", "nnn-ramdisk");
+const JV_CUDA_MANIFEST_PATH = process.env.JV_CUDA_MANIFEST_PATH || path.join(juRamdiskDir, "jv_cuda_manifest.json");
 const JV_CUDA_MANIFEST_PATH = "C:\\nnn-hyperbolic-ramdisk\\target\\nnn-ramdisk\\jv_cuda_manifest.json";
 
 export const SLANG_DIALECT_MAP = {

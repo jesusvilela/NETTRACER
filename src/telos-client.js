@@ -3,7 +3,7 @@
  * Provides topological validation and geometric metrics.
  */
 export class TelosClient {
-  constructor(baseUrl = "http://localhost:8080") {
+  constructor(baseUrl = process.env.TELOS_BASE_URL || "http://127.0.0.1:8001") {
     this.baseUrl = baseUrl;
   }
 

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import { summarize } from "./packet.js";
 import { extractSectionTags } from "./section-lang.js";
 import { TelosValidator } from "./telos-validator.js";
@@ -27,7 +28,7 @@ const DEFAULT_THRESHOLDS = {
   maxDistortion: 0.82
 };
 
-const THESIS_PATH = "H:/SLANG_TESTING/thesis/thesis.md";
+const THESIS_PATH = process.env.THESIS_PATH || path.join(process.cwd(), "data", "thesis.md");
 
 export class SlangInterpreter {
   constructor({ traceStore, controlPlane, slangControlPlane = null, telosBaseUrl = "http://localhost:8001" }) {  

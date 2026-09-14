@@ -25,7 +25,7 @@ export function buildSubstrateFoundation({
     const higher = VERSION_LADDER[index + 1] || null;
     return {
       ...version,
-      local_url: `http://127.0.0.1:${version.port}${version.view}`,
+      local_url: version.view,
       lower: lower?.id || null,
       higher: higher?.id || null,
       movement: {
