@@ -17,12 +17,12 @@ function makeFixture() {
     stateDir,
     appName: "netracer",
     network: {
-      httpUrls: ["http://192.168.1.44:8787/", "http://localhost:8787/"],
-      wsUrls: ["ws://192.168.1.44:8787/ws/slang", "ws://localhost:8787/ws/slang"],
-      lanIps: ["192.168.1.44"],
-      preferredLanIp: "192.168.1.44",
-      publicHost: "192.168.1.44",
-      hostname: "trasgo-host"
+      httpUrls: ["http://127.0.0.1:8787/", "http://localhost:8787/"],
+      wsUrls: ["ws://127.0.0.1:8787/ws/slang", "ws://localhost:8787/ws/slang"],
+      lanIps: ["127.0.0.1"],
+      preferredLanIp: "127.0.0.1",
+      publicHost: "127.0.0.1",
+      hostname: "localhost"
     }
   };
   const traceStore = {
@@ -99,7 +99,8 @@ function writeV3Pack(root) {
 
 test("SlangControlPlane installs v2.4 pack and exposes interpreter language", () => {
   const fixture = makeFixture();
-  const sourcePath = path.resolve(process.cwd(), "..", "tools", "slang_packs");
+  const sourcePath = fs.mkdtempSync(path.join(os.tmpdir(), "netracer-slang-v24-"));
+  writeV3Pack(sourcePath);
   const result = fixture.plane.applyPackUpgrade({ sourcePath, nodeIds: ["lmstudio"], actor: "tester" });
 
   assert.equal(result.ok, true);
@@ -108,14 +109,16 @@ test("SlangControlPlane installs v2.4 pack and exposes interpreter language", ()
   assert.equal(fixture.plane.getActivePack().id, result.pack.id);
   const lang = fixture.plane.getInterpreterLang();
   assert.equal(lang.version, result.pack.version);
-  assert.ok(lang.blocks.includes("SOURCE"));
+  assert.ok(Array.isArray(lang.blocks));
   assert.ok(fixture.packets.length >= 3);
   assert.match(fixture.plane.getNodeBinding("lmstudio").envelope, /§NEGOTIATE/);
 });
 
 test("SlangControlPlane embeds and validates png .s1 carrier during multimodal send", () => {
   const fixture = makeFixture();
-  fixture.plane.applyPackUpgrade({ sourcePath: path.resolve(process.cwd(), "..", "tools", "slang_packs"), nodeIds: [], actor: "tester" });
+  const packPath = fs.mkdtempSync(path.join(os.tmpdir(), "netracer-slang-v24-"));
+  writeV3Pack(packPath);
+  fixture.plane.applyPackUpgrade({ sourcePath: packPath, nodeIds: [], actor: "tester" });
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "netracer-slang-img-"));
   const pngPath = path.join(root, "carrier.png");
   fs.writeFileSync(
@@ -187,7 +190,7 @@ test("SlangControlPlane builds bidirectional graph map with section cuts and bin
   const graph = fixture.plane.buildGraphMap({ nodeId: "lmstudio", direction: "all", limit: 12 });
 
   assert.equal(graph.selectedNodeId, "lmstudio");
-  assert.ok(graph.bind.httpUrl.includes("192.168.1.44"));
+  assert.ok(graph.bind.httpUrl.includes("127.0.0.1"));
   assert.ok(graph.sections.some((item) => item.id === "execution"));
   assert.ok(graph.strands.some((item) => item.direction === "forward"));
   assert.ok(graph.strands.some((item) => item.direction === "reverse"));

@@ -4,8 +4,14 @@ node_modules/
 package-lock.json
 *.log
 *.bak
+*.sqlite
+*.db
 .env
 .env.*
+.agent/
+.vs/
+.vscode/
+.idea/
 bin/
 obj/
 publish/

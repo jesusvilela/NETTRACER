@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
 import { Broker } from "../src/broker.js";
 
 function makeBroker() {
@@ -14,7 +15,7 @@ function makeBroker() {
     upstreamModelTimeoutMs: 25,
     upstreamCompletionTimeoutMs: 250,
     commandEngineTimeoutMs: 250,
-    outboxDir: "h:/TRASGONET/netracer/data/outbox",
+    outboxDir: path.join(process.cwd(), "data", "outbox"),
     signingKey: "test-signing-key",
     upstreams: [
       { id: "lmstudio", baseUrl: "http://127.0.0.1:1234", model: "a", priority: 100, healthPath: "/v1/models" },

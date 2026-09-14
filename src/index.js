@@ -83,6 +83,28 @@ try {
 console.log("Creating Server...");
 const server = createServer({ config, traceStore, broker, telemetry, controlPlane, auth, ingress, autoCycle, archive, slangControlPlane });
 
+if (config.demoMode) {
+  console.log("🎮 Demo mode active: generating synthetic .s1 packet stream...");
+  let packetCount = 0;
+  setInterval(() => {
+    packetCount++;
+    const stages = ["ING", "CHK", "CMT", "RLB"];
+    const routes = ["demo-lmstudio", "demo-ollama", "demo-vllm"];
+    const route = routes[packetCount % routes.length];
+    const stage = stages[packetCount % stages.length];
+    broker.emitPacket({
+      packetType: packetCount % 3 === 0 ? "proof" : "execution",
+      clientId: "demo-client",
+      actor: "demo-operator",
+      intent: `Demo synthetic traffic stream packet #${packetCount}`,
+      route,
+      model: `${route}-model`,
+      stage: { name: stage, score: 0.95 },
+      labels: [`§NODE:${route}`, `§DEMO:#${packetCount}`]
+    });
+  }, 4000);
+}
+
 console.log(`Starting server on ${config.host}:${config.port}...`);
 server.listen(config.port, config.host, () => {
   console.log(JSON.stringify({

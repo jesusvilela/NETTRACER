@@ -14,10 +14,10 @@ const NODE_MESSAGE_LIMIT = 160;
 const RELAY_LIMIT = 400;
 const GRAPH_SECTION_ORDER = ["reservoir", "admission", "execution", "return", "proof"];
 const DEFAULT_DIALECTS = ["Proof", "Topo", "IG"];
-const DEFAULT_ANDROID_PACK_SOURCE = "C:\\Users\\HAL900\\AndroidStudioProjects\\topostrasgo\\app\\src\\main\\assets\\slang_packs";
-const DEFAULT_TOPOSTRASGO_ROOT = "C:\\Users\\HAL900\\AndroidStudioProjects\\topostrasgo";
-const DEFAULT_UTAI_ROOT = "H:\\NP Completeness Bunny UTAI study\\UTAI";
-const DEFAULT_IGBUNDLE_ROOT = "H:\\LLM-MANIFOLD\\igbundle-llm";
+const DEFAULT_ANDROID_PACK_SOURCE = process.env.SLANG_PACK_SOURCE || "";
+const DEFAULT_TOPOSTRASGO_ROOT = process.env.TOPOSTRASGO_ROOT || "";
+const DEFAULT_UTAI_ROOT = process.env.UTAI_ROOT || "";
+const DEFAULT_IGBUNDLE_ROOT = process.env.IGBUNDLE_ROOT || "";
 const MIND_QUALITY_IDS = [
   "self_reflection",
   "godelian_identity",
@@ -1253,8 +1253,8 @@ function packSourceCandidates(input = "") {
   const cwd = process.cwd();
   const raw = String(input || "").trim();
   const androidRoot = String(process.env.TOPOS_TRASGO_ASSET_PACK_DIR || DEFAULT_ANDROID_PACK_SOURCE || "").trim();
-  const downloadsRoot = path.join(process.env.USERPROFILE || "", "Downloads");
-  const npStudyRoot = "H:\\NP Completeness Bunny UTAI study";
+  const downloadsRoot = path.join(process.env.USERPROFILE || os.homedir() || "", "Downloads");
+  const npStudyRoot = process.env.NP_STUDY_ROOT || "";
   const list = [
     raw,
     raw && raw.replace(/[\\/]+$/, ""),

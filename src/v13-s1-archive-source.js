@@ -4,11 +4,10 @@ import zlib from "node:zlib";
 import { DatabaseSync } from "node:sqlite";
 
 const DEFAULT_CANDIDATES = [
-  "H:\\TRASGONET\\netracer\\data\\state\\s1-archive.sqlite",
-  "H:\\TRASGONET\\netracer\\data-dashboard\\state\\s1-archive.sqlite",
-  "H:\\TRASGONET\\netracer\\data\\state-backups\\visibility-20260421-104113\\state\\s1-archive.sqlite",
-  "H:\\TRASGONET\\netracer\\data\\state-backups\\restart-20260421-100847\\s1-archive.sqlite",
-  "H:\\TRASGONET\\netracer\\data\\state-backups\\relaunch-20260421-183401\\s1-archive.sqlite"
+  path.resolve(process.cwd(), "data", "state", "s1-archive.sqlite"),
+  path.resolve(process.cwd(), "data-v4", "state", "s1-archive.sqlite"),
+  path.resolve(process.cwd(), "data-v3", "state", "s1-archive.sqlite"),
+  path.resolve(process.cwd(), "data-v2", "state", "s1-archive.sqlite")
 ];
 
 export function resolveV13ArchiveSource({ archive = null, hours = 168, cwd = process.cwd() } = {}) {

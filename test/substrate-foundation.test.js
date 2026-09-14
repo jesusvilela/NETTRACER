@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
 import { buildSubstrateFoundation } from "../src/substrate-foundation.js";
 
 test("substrate foundation exposes non-destructive V1-to-latest traffic basis", () => {
@@ -15,9 +16,9 @@ test("substrate foundation exposes non-destructive V1-to-latest traffic basis", 
     },
     archiveSource: {
       source: "fallback-readonly",
-      fallbackPath: "H:\\TRASGONET\\netracer\\data\\state\\s1-archive.sqlite",
+      fallbackPath: path.join(process.cwd(), "data", "state", "s1-archive.sqlite"),
       archiveStatus: {
-        dbPath: "H:\\TRASGONET\\netracer\\data\\state\\s1-archive.sqlite",
+        dbPath: path.join(process.cwd(), "data", "state", "s1-archive.sqlite"),
         packetCount: 134000,
         compressionRatio: 0.5
       }

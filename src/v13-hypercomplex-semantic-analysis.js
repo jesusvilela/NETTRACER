@@ -38,7 +38,7 @@ export function buildV13HypercomplexSemanticAnalysis({
     inherits: "netracer-v12-aaa-world-generator",
     writes: [],
     non_destructive: true,
-    source_surface: "http://192.168.3.88:8787/s1",
+    source_surface: "/s1",
     analysis_axiom: "present the normal human with readable richness from .s1 packets, substrate routes, node topology, semantic motifs, and hypercomplex strata",
     substrate,
     hypercomplex_semantics: {

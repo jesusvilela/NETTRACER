@@ -53,7 +53,6 @@ export function buildV4VersionCage() {
       crossing_modes: ["translate", "holoport", "reflect", "resonate", "return"],
       entry_points: VERSION_NODES.map((node) => ({
         version: node.id,
-        local_url: `http://127.0.0.1:${node.port}/`,
         primary_surface: node.surfaces[0]
       })),
       selected_default_path: ["V1", "V2", "V3", "V1"]
