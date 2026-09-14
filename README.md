@@ -10,7 +10,7 @@
 
 [![Node.js 22+](https://img.shields.io/badge/node.js->=22.0.0-000000?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License: BSD 3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-000000?style=for-the-badge)](LICENSE)
-[![CI Status](https://img.shields.io/badge/build-passing-000000?style=for-the-badge&logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+[![CI](https://github.com/jesusvilela/NETTRACER/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jesusvilela/NETTRACER/actions/workflows/ci.yml)
 [![Protocol: .s1 / §-LANG](https://img.shields.io/badge/protocol-.s1%20%2F%20%C2%A7--LANG-000000?style=for-the-badge)](#-section-language--s1-protocol)
 
 *A local-first, zero-trust Topos orchestration broker interposing across neural runtimes, section-language control planes, and hypercomplex manifold projections.*
